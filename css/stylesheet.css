@@ -28,6 +28,7 @@ a:visited {
     color: grey;
 }
 
+
 #container {
     padding-top: 60px;
 }
@@ -73,7 +74,7 @@ a:visited {
     margin: 3px;
 }
 
-.nav-text:hover{
+.nav-text:hover {
      color: grey;
      transition: all .25s ease-in-out;
 }
@@ -114,7 +115,11 @@ a:visited {
     max-width: 30%;
 }
 
-.featured h3 {
+.featured-img{
+    overflow: hidden;
+}
+
+.featured-text {
     margin: 0;
     text-align: right;
     font-size: 10px;
@@ -155,6 +160,10 @@ a:visited {
 .top-l {
     border-top: 1px dotted #999;
 }
+
+.collapsed {
+    height: 0;
+
 
 
 
