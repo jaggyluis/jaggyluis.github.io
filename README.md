@@ -1,3 +1,3 @@
-# jaggyluis.github.io
+## jaggyluis.github.io
 
 personal website
