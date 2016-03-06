@@ -1,0 +1,112 @@
+
+html,
+body {
+	height: 100%;
+	font: 400 12px/18px "PT Mono", monospace;
+	text-transform: uppercase;
+    letter-spacing: 3px;
+    overflow-x: hidden;
+}
+
+img {
+	width: 100%;
+}
+
+#container  {
+	margin-top: 20px;
+}
+
+#nav {
+	width: 200px;
+	float: left;
+}
+
+#nav-header {
+	padding: 20px 0px 0px 20px;
+	margin-bottom: 20px;
+}
+
+#nav-title {
+	font-size: 18px;
+	padding-left: 10px;
+}
+
+#nav-section {
+	padding-left: 20px;
+}
+
+.nav-item {
+	min-height: 20px;
+	padding-left: 10px;
+	//padding-bottom: 20px;
+
+}
+
+.nav-item-header{
+	//padding-bottom: 1px;
+}
+
+.nav-item-content-el {
+	padding-left: 10px;
+	//padding-bottom: 1px;
+	min-height: 20px;
+	//margin-left: 10px;
+	font-size: 11px;
+}
+
+.nav-item-header:hover {
+	color: grey;
+}
+.nav-item-content-el:hover {
+	color: grey;
+	border-left: 1px solid black;
+	//transition: all .25s ease-in-out;
+}
+
+
+#canvas{
+	margin-left: 220px;
+	padding-bottom: 20px;
+	max-width: 1000px;
+}
+
+#canvas-header-img {
+	width: 99%;
+	height: 200px;
+	overflow: hidden;
+}
+
+#canvas-footer {
+	margin-top: 20px;
+	margin-right: -100px;
+	height: 40px;
+}
+
+#canvas-footer-item {
+	width: 20%;
+	height: 50%;
+	margin-left: 10px;
+	padding-left: 10px;
+	float: left;
+}
+
+
+.outlined-top {
+	border-top: 1px dotted black;
+}
+
+.outlined-right {
+	border-right: 1px dotted black;
+}
+
+.outlined-left {
+	border-left: 1px dotted black;
+}
+
+.outlined-bottom {
+	border-bottom: 1px dotted black;
+}
+
+.hidden {
+	display: none;
+}
