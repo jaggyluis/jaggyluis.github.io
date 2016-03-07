@@ -38,19 +38,17 @@ img {
 .nav-item {
 	min-height: 20px;
 	padding-left: 10px;
-	//padding-bottom: 20px;
-
+	padding-bottom: 3px;
 }
 
-.nav-item-header{
-	//padding-bottom: 1px;
+.nav-item-header {
+	font-size: 14px;
 }
 
 .nav-item-content-el {
+	padding-top: 2px;
 	padding-left: 10px;
-	//padding-bottom: 1px;
 	min-height: 20px;
-	//margin-left: 10px;
 	font-size: 11px;
 }
 
@@ -60,13 +58,11 @@ img {
 .nav-item-content-el:hover {
 	color: grey;
 	border-left: 1px solid black;
-	//transition: all .25s ease-in-out;
 }
 
-
 #canvas{
-	margin-left: 220px;
 	padding-bottom: 20px;
+	margin-left: 220px;
 	max-width: 1000px;
 }
 
@@ -76,10 +72,26 @@ img {
 	overflow: hidden;
 }
 
+#canvas-featured {
+	min-height: 100px;
+	padding-bottom: 10px;
+}
+
+.canvas-featured-col{
+	width: 30%;
+	margin-right: 3%;
+	float: left;
+}
+
+.canvas-featured-el{
+	text-align: right;
+	padding: 0 10px 0 10px;
+}
+
 #canvas-footer {
 	margin-top: 20px;
 	margin-right: -100px;
-	height: 40px;
+	height: 30px;
 }
 
 #canvas-footer-item {

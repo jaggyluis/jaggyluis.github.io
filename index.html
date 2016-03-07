@@ -14,21 +14,21 @@
 	<div id="container" data-bind="with: main">
 		<div id="nav">
 			<header id="nav-header" class="outlined-top outlined-right">
-				<div id="nav-title" class="outlined-top outlined-left" data-bind="foreach: getTitle()">
+				<div id="nav-title" data-bind="foreach: getTitle()">
 					<div class="nav-title-item" data-bind="text: $data"></div>
 				</div>
 			</header>
 			<section id="nav-section" data-bind="foreach: navItems()">
-				<div class="nav-item outlined-bottom" data-bind="attr: {id: $data.name}"></div>
+				<div class="nav-item" data-bind="attr: {id: $data.name}"></div>
 			</section>
 		</div>
 		<div id="canvas" class="outlined-bottom outlined-right">
 			<header id="canvas-header">
 				<div id="canvas-header-img"><img src="img/coverBanner.jpg"></div>
 			</header>
-			<section></section>
+			<section id="canvas-featured" class="row"></section>
 			<footer id="canvas-footer" class="outlined-bottom outlined-left" data-bind="foreach: footerItems()">
-				<div id="canvas-footer-item" class="outlined-left" data-bind="text: $data.name"></div>
+				<div id="canvas-footer-item" data-bind="text: $data.name"></div>
 			</footer>
 		</div>
 	</div>

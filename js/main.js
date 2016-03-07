@@ -14,7 +14,7 @@ var main = main || {};
 		ko.applyBindings(main);
 
 		this.setNavItems();
-		console.log(this.projects());
+		this.setProjects();
 
 	},
 	main.getTitle = function() {
@@ -47,14 +47,8 @@ var main = main || {};
 				}
 				this.nextSibling.classList.toggle('hidden');
 			});
-		
-			
-			if (Math.random()  < 0.5 ) {
-				//DOMelement.classList.add('outlined-right');
-				DOMelement.classList.add('outlined-left');
-			} else {
-				DOMelement.classList.add('outlined-left');
-			}
+
+			//DOMelement.classList.add('outlined-left');
 
 			DOMelement.appendChild(header);	
 			DOMelement.appendChild(content);
@@ -67,14 +61,7 @@ var main = main || {};
 			navItem.content.forEach(function(contentItem) {
 				var item = document.createElement('div');
 				item.classList.add('nav-item-content-el')
-				//item.classList.add('outlined-top')
-				//item.classList.add('outlined-right')
-				if (Math.random()  < 0.5 ) {
-					//item.classList.add('outlined-right');
-					item.classList.add('outlined-left');
-				} else {
-					item.classList.add('outlined-left');
-				}
+				item.classList.add('outlined-left');
 				item.id = contentItem.name;
 				item.innerHTML = contentItem.name;
 				content.appendChild(item);
@@ -87,7 +74,35 @@ var main = main || {};
 	main.getNavItemName = function(navItem) {
 		if (navItem.content.length > 0) { return navItem.name + ' +'; }
 		else{ return navItem.name; }
-	};
+	},
+	main.setProjects = function() {
+
+		var DOMelement = document.getElementById("canvas-featured");
+		var width = document.width;
+		var cols = [];
+
+		for (var i=0; i<3; i++){
+			var col = document.createElement('div');
+			col.classList.add("canvas-featured-col");
+			cols.push(col);
+		};
+
+		for (var i=0; i<this.projects().length; i++){
+			var project = document.createElement('div');
+			project.classList.add('canvas-featured-el')
+			project.classList.add('outlined-bottom');
+			if (Math.random() > 0.5) {
+				project.classList.add('outlined-right');
+			} else {
+				project.classList.add('outlined-left');
+			}
+			project.innerHTML = this.projects()[i].name;
+			cols[i%3].appendChild(project);
+		}
+		cols.forEach(function(col) {
+			DOMelement.appendChild(col);
+		})
+	}
 
 	main.init();
 
