@@ -7,23 +7,23 @@ var navItems = [
 		content: [
 			{
 				name: 'the feed',
-				url: 'pages/the_feed'
+				url: 'img/the feed'
 			},
 			{
 				name: 'bauhaus museum',
-				url: 'pages/bauhaus'
+				url: 'img/bauhaus museum'
 			},
 			{
 				name: 'innovatrium',
-				url: 'pages/bauhaus'
+				url: 'img/innovatrium'
 			},
 			{
 				name: 'vertial vities asia',
-				url: 'pages/bauhaus'
+				url: 'img/vertical cities'
 			},
 			{
 				name: 'glen park nursery school',
-				url: 'pages/bauhaus'
+				url: 'img/glen park nursery school'
 			}
 		],
 	},
@@ -33,23 +33,23 @@ var navItems = [
 		content: [
 			{
 				name: 'design modeling symposium',
-				url: 'pages/studio_one'
+				url: 'img/innovatrium'
 			},
 			{
 				name: 'decodes',
-				url: 'pages/studio_one'
+				url: 'img/innovatrium'
 			},
 			{
 				name: 'fieldguide to computation',
-				url: 'pages/studio_one'
+				url: 'img/innovatrium'
 			},
 			{
 				name: 'ddmi',
-				url: 'pages/studio_one'
+				url: 'img/innovatrium'
 			},
 			{
 				name: 'panther game engine',
-				url: 'pages/studio_one'
+				url: 'img/innovatrium'
 			}
 		],
 	},

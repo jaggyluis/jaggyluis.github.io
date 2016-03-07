@@ -89,6 +89,9 @@ var main = main || {};
 
 		for (var i=0; i<this.projects().length; i++){
 			var project = document.createElement('div');
+			var img = document.createElement('div');
+			var title = document.createElement('div')
+
 			project.classList.add('canvas-featured-el')
 			project.classList.add('outlined-bottom');
 			if (Math.random() > 0.5) {
@@ -96,7 +99,23 @@ var main = main || {};
 			} else {
 				project.classList.add('outlined-left');
 			}
-			project.innerHTML = this.projects()[i].name;
+			img.innerHTML = '<img src="' + this.projects()[i].url + '/splash.jpg" >';
+			title.innerHTML = this.projects()[i].name;
+			img.classList.add("featured-img");
+			img.classList.add('collapsed');
+			title.classList.add('featured-title')
+
+			project.appendChild(img);
+			project.appendChild(title);
+
+			project.addEventListener('mouseenter', (function(){
+				this.classList.remove("collapsed");
+			}).bind(img));
+			project.addEventListener('mouseleave', (function(){
+				this.classList.add("collapsed");
+			}).bind(img));
+
+
 			cols[i%3].appendChild(project);
 		}
 		cols.forEach(function(col) {

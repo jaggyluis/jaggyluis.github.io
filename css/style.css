@@ -29,6 +29,8 @@ img {
 #nav-title {
 	font-size: 18px;
 	padding-left: 10px;
+	padding-top: 10px;
+	margin-right: -2000px;
 }
 
 #nav-section {
@@ -43,6 +45,10 @@ img {
 
 .nav-item-header {
 	font-size: 14px;
+}
+
+.nav-item-img {
+	overflow: hidden;
 }
 
 .nav-item-content-el {
@@ -73,8 +79,9 @@ img {
 }
 
 #canvas-featured {
-	min-height: 100px;
 	padding-bottom: 10px;
+	overflow: hidden;
+	//clear: both;
 }
 
 .canvas-featured-col{
@@ -83,14 +90,19 @@ img {
 	float: left;
 }
 
-.canvas-featured-el{
-	text-align: right;
+.featured-img {
+	height: 60px;
+	overflow: hidden;
+}
+
+.featured-title {
 	padding: 0 10px 0 10px;
+	text-align: right;
 }
 
 #canvas-footer {
 	margin-top: 20px;
-	margin-right: -100px;
+	margin-right: -20px;
 	height: 30px;
 }
 
@@ -122,3 +134,6 @@ img {
 .hidden {
 	display: none;
 }
+
+.collapsed {
+    height: 0;
