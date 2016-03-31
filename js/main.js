@@ -80,6 +80,7 @@ var main = main || {};
 		var DOMelement = document.getElementById("canvas-featured");
 		var width = document.width;
 		var cols = [];
+		var self = this;
 
 		for (var i=0; i<3; i++){
 			var col = document.createElement('div');
@@ -109,10 +110,10 @@ var main = main || {};
 			project.appendChild(title);
 
 			project.addEventListener('mouseenter', (function(){
-				this.classList.remove("collapsed");
-			}).bind(img));
+				//document.getElementById('canvas-header-img').firstChild.src = self.projects()[this].url + '/splash.jpg';
+			}).bind(i));
 			project.addEventListener('mouseleave', (function(){
-				this.classList.add("collapsed");
+				//document.getElementById('canvas-header-img').firstChild.src = 'img/coverBanner.jpg';
 			}).bind(img));
 
 

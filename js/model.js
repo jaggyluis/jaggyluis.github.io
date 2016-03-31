@@ -33,23 +33,23 @@ var navItems = [
 		content: [
 			{
 				name: 'design modeling symposium',
-				url: 'img/innovatrium'
+				url: 'img/vertical cities'
 			},
 			{
 				name: 'decodes',
-				url: 'img/innovatrium'
+				url: 'img/vertical cities'
 			},
 			{
 				name: 'fieldguide to computation',
-				url: 'img/innovatrium'
+				url: 'img/vertical cities'
 			},
 			{
 				name: 'ddmi',
-				url: 'img/innovatrium'
+				url: 'img/vertical cities'
 			},
 			{
 				name: 'panther game engine',
-				url: 'img/innovatrium'
+				url: 'img/vertical cities'
 			}
 		],
 	},
