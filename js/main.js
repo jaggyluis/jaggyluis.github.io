@@ -14,7 +14,7 @@ var main = main || {};
 		ko.applyBindings(main);
 
 		this.setNavItems();
-		this.setProjects();
+		this.setFeatured();
 
 	},
 	main.getTitle = function() {
@@ -75,49 +75,24 @@ var main = main || {};
 		if (navItem.content.length > 0) { return navItem.name + ' +'; }
 		else{ return navItem.name; }
 	},
-	main.setProjects = function() {
+	main.setFeatured = function() {
 
 		var DOMelement = document.getElementById("canvas-featured");
+		var template = document.getElementById("featured-template")
 		var width = document.width;
 		var cols = [];
-		var self = this;
 
 		for (var i=0; i<3; i++){
 			var col = document.createElement('div');
 			col.classList.add("canvas-featured-col");
+			col.classList.add("outlined-right");
 			cols.push(col);
 		};
 
 		for (var i=0; i<this.projects().length; i++){
-			var project = document.createElement('div');
-			var img = document.createElement('div');
-			var title = document.createElement('div')
-
-			project.classList.add('canvas-featured-el')
-			project.classList.add('outlined-bottom');
-			if (Math.random() > 0.5) {
-				project.classList.add('outlined-right');
-			} else {
-				project.classList.add('outlined-left');
-			}
-			img.innerHTML = '<img src="' + this.projects()[i].url + '/splash.jpg" >';
-			title.innerHTML = this.projects()[i].name;
-			img.classList.add("featured-img");
-			img.classList.add('collapsed');
-			title.classList.add('featured-title')
-
-			project.appendChild(img);
-			project.appendChild(title);
-
-			project.addEventListener('mouseenter', (function(){
-				//document.getElementById('canvas-header-img').firstChild.src = self.projects()[this].url + '/splash.jpg';
-			}).bind(i));
-			project.addEventListener('mouseleave', (function(){
-				//document.getElementById('canvas-header-img').firstChild.src = 'img/coverBanner.jpg';
-			}).bind(img));
-
-
-			cols[i%3].appendChild(project);
+			cols[i%3].innerHTML += template.innerHTML
+				.replace('%title%', this.projects()[i].name)
+				.replace('%src%', this.projects()[i].url);
 		}
 		cols.forEach(function(col) {
 			DOMelement.appendChild(col);

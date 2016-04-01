@@ -33,25 +33,28 @@
 	</div>
 
 
+	<!-- templates -->
 
-	<div class="canvas-featured-el outlined-bottom">
-		<div></div>
-		<div></div>
-	</div>
-
-	<script type="text/javascript">
-
-	<section id="project-box">
-		<div id="project-reel">
-			<div id="reel-box">
-				<img src="%data%"id="reel-img">
+	<script type="text/template" id="featured-template">
+		<div class="canvas-featured-el outlined-bottom">
+			<div class="featured-img collapsed">
+				<img src="%src%">
 			</div>
-			<div id="project-title">TMP</div>
+			<div class="featured-title">%title%</div>
 		</div>
-	</section>
+	</script>
 
+	<script type="text/template" id="project-template">
+		<section id="project-box">
+			<div id="project-reel">
+				<div id="reel-box">
+					<img src="%src%"id="reel-img">
+				</div>
+				<div id="project-title">%name%</div>
+			</div>
+		</section>
 	</script>
-	</script>
+
 	<script type="text/javascript" src="js/model.js"></script>
 	<script type="text/javascript" src="js/main.js"></script>
 	<script type="text/html" id="nav_template"></script>

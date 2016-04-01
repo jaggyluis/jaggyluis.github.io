@@ -86,6 +86,11 @@ img {
 	//clear: both;
 }
 
+.canvas-featured-el {
+	padding-right: 5px;
+	margin-right: -10px;
+}
+
 .canvas-featured-el:hover {
 	color: grey;
 }
