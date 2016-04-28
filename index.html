@@ -11,24 +11,20 @@
 </head>
 <body>
 	<div id="container" data-bind="with: main">
-		<div id="nav">
-			<header id="nav-header" class="outlined-top outlined-right">
-				<div id="nav-title"class="outlined-top" data-bind="foreach: getTitle()">
-					<div class="nav-title-item" data-bind="text: $data"></div>
+		<div id="nav" class="outlined-right">
+			<header id="nav-header" class="">
+				<div id="nav-title"class="" data-bind="foreach: getTitle()">
+					<div class="nav-title-item" data-bind="text: '>>> '+ $data"></div>
 				</div>
 			</header>
 			<section id="nav-section" data-bind="foreach: navItems()">
 				<div class="nav-item" data-bind="attr: {id: $data.name}"></div>
 			</section>
 		</div>
-		<div id="canvas" class="outlined-bottom outlined-right">
-			<header id="canvas-header">
-				<div id="canvas-header-img"><img src="img/coverBanner.jpg"></div>
+		<div id="canvas" class="">
+			<header id="canvas-header" class="outlined-bottom" data-bind="foreach: headerItems()">
+				<div id="canvas-header-item" class-"outlined-right" data-bind="text: 'self._'+$data.name"></div>
 			</header>
-			<section id="canvas-featured" class="row"></section>
-			<footer id="canvas-footer" class="outlined-bottom outlined-left" data-bind="foreach: footerItems()">
-				<div id="canvas-footer-item" data-bind="text: $data.name"></div>
-			</footer>
 		</div>
 	</div>
 
@@ -37,7 +33,7 @@
 
 	<script type="text/template" id="featured-template">
 		<div class="canvas-featured-el outlined-bottom">
-			<div class="featured-img collapsed">
+			<div class="featured-img">
 				<img src="%src%">
 			</div>
 			<div class="featured-title">%title%</div>

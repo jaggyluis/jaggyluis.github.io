@@ -18,7 +18,7 @@ var navItems = [
 				url: 'img/innovatrium'
 			},
 			{
-				name: 'vertial vities asia',
+				name: 'vertial cities asia',
 				url: 'img/vertical cities'
 			},
 			{
@@ -68,7 +68,7 @@ var navItems = [
 
 ];
 
-var footerItems = [
+var headerItems = [
 	{
 		name: 'linkedIn',
 		url: null,

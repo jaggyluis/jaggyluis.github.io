@@ -3,7 +3,6 @@ html,
 body {
 	height: 100%;
 	font: 400 12px/18px "PT Mono", monospace;
-	text-transform: uppercase;
     letter-spacing: 3px;
     overflow-x: hidden;
 }
@@ -17,20 +16,20 @@ img {
 }
 
 #nav {
-	width: 200px;
+	width: 300px;
 	float: left;
+	padding-right: 10px;
+	//min-height: 500px;
 }
 
 #nav-header {
-	padding: 20px 0px 0px 20px;
+	padding: 0px 0px 0px 20px;
 	margin-bottom: 20px;
 }
 
 #nav-title {
 	font-size: 18px;
 	padding-left: 10px;
-	padding-top: 10px;
-	margin-right: -2000px;
 }
 
 #nav-section {
@@ -47,15 +46,33 @@ img {
 	font-size: 14px;
 }
 
+.nav-item-content {
+	padding-left: 20px;
+}
+
 .nav-item-img {
 	overflow: hidden;
+
 }
 
 .nav-item-content-el {
 	padding-top: 2px;
+	padding-left: 30px;
+	margin-left: -21px;
+	min-height: 20px;
+	font-size: 11px;
+}
+
+.nav-item-content-show {
+	display: inline-block;
+	padding-top: 2px;
 	padding-left: 10px;
 	min-height: 20px;
 	font-size: 11px;
+}
+
+.nav-item-content-title {
+	display: inline-block;
 }
 
 .nav-item-header:hover {
@@ -67,62 +84,24 @@ img {
 }
 
 #canvas{
-	padding-top: 22px;
-	padding-bottom: 20px; 
-	margin-left: 220px;
-	max-width: 1000px;
+	margin-left: 300px;
+	//max-width: 1000px;
+	height: 90%;
+	padding-right: 10px;
+	overflow-x: hidden;
 }
 
-#canvas-header-img {
-	width: 99%;
-	height: 200px;
-	overflow: hidden;
-
+#canvas-header {
+	height: 20px;
 }
 
-#canvas-featured {
-	padding-bottom: 10px;
-	overflow: hidden;
-	//clear: both;
-}
-
-.canvas-featured-el {
-	padding-right: 5px;
-	margin-right: -10px;
-}
-
-.canvas-featured-el:hover {
-	color: grey;
-}
-
-.canvas-featured-col {
-	width: 30%;
-	margin-right: 3%;
-	float: left;
-}
-
-.featured-img {
-	height: 60px;
-	overflow: hidden;
-}
-
-.featured-title {
-	padding: 0 10px 0 10px;
+#canvas-header-item {
 	text-align: right;
-}
-
-#canvas-footer {
-	margin-top: 20px;
-	margin-right: -20px;
-	height: 30px;
-}
-
-#canvas-footer-item {
-	width: 20%;
-	height: 50%;
+	width: 200px;
 	margin-left: 10px;
 	padding-left: 10px;
-	float: left;
+	padding-right: 10px;
+	float: right;
 }
 
 
