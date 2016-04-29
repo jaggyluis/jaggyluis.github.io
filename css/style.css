@@ -2,7 +2,7 @@
 html,
 body {
 	height: 100%;
-	font: 400 12px/18px "PT Mono", monospace;
+	font: 400 11px/18px "PT Mono", monospace;
     letter-spacing: 3px;
     overflow-x: hidden;
 }
@@ -18,27 +18,18 @@ img {
 #nav {
 	width: 300px;
 	float: left;
-	padding-right: 10px;
-	//min-height: 500px;
 }
 
 #nav-header {
-	padding: 0px 0px 0px 20px;
 	margin-bottom: 20px;
 }
 
 #nav-title {
 	font-size: 18px;
-	padding-left: 10px;
-}
-
-#nav-section {
-	padding-left: 20px;
 }
 
 .nav-item {
 	min-height: 20px;
-	padding-left: 10px;
 	padding-bottom: 3px;
 }
 
@@ -50,24 +41,14 @@ img {
 	padding-left: 20px;
 }
 
-.nav-item-img {
-	overflow: hidden;
-
-}
-
 .nav-item-content-el {
-	padding-top: 2px;
 	padding-left: 30px;
 	margin-left: -21px;
-	min-height: 20px;
-	font-size: 11px;
 }
 
 .nav-item-content-show {
 	display: inline-block;
-	padding-top: 2px;
 	padding-left: 10px;
-	min-height: 20px;
 	font-size: 11px;
 }
 
@@ -85,9 +66,7 @@ img {
 
 #canvas{
 	margin-left: 300px;
-	//max-width: 1000px;
 	height: 90%;
-	padding-right: 10px;
 	overflow-x: hidden;
 }
 
@@ -97,13 +76,13 @@ img {
 
 #canvas-header-item {
 	text-align: right;
-	width: 200px;
-	margin-left: 10px;
-	padding-left: 10px;
-	padding-right: 10px;
+	padding-right: 20px;
 	float: right;
 }
 
+.outlined {
+	border: 1px dotted black;
+}
 
 .outlined-top {
 	border-top: 1px dotted black;

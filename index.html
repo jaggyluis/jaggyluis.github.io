@@ -10,8 +10,8 @@
 
 </head>
 <body>
-	<div id="container" data-bind="with: main">
-		<div id="nav" class="outlined-right">
+	<div id="container" class="" data-bind="with: main">
+		<div id="nav" class="">
 			<header id="nav-header" class="">
 				<div id="nav-title"class="" data-bind="foreach: getTitle()">
 					<div class="nav-title-item" data-bind="text: '>>> '+ $data"></div>
@@ -25,6 +25,10 @@
 			<header id="canvas-header" class="outlined-bottom" data-bind="foreach: headerItems()">
 				<div id="canvas-header-item" class-"outlined-right" data-bind="text: 'self._'+$data.name"></div>
 			</header>
+			<section id="canvas-box">
+				<canvas id="projects">
+				</canvas>
+			</section>
 		</div>
 	</div>
 
