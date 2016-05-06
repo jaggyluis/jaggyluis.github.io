@@ -14,6 +14,7 @@ var main = main || {};
 		ko.applyBindings(main);
 
 		this.setNavItems();
+		this.setNumLines();
 	},
 	main.getTitle = function() {
 		return this.title.split(' ');
@@ -76,6 +77,16 @@ var main = main || {};
 			} else {
 				content.innerHTML = '{<br><div class="nav-item-content-el">//coming soon</div>}';
 			}
+		}
+		main.setNumLines = function() {
+			var num = document.getElementById('num'),
+		    	nl = 100;
+		    for (var i = 0; i < nl; i++) {
+		    	var  numDiv = document.createElement("div");
+		    	numDiv.classList.toggle('num-div');
+		    	numDiv.innerText = i;
+		    	num.appendChild(numDiv);
+		    }
 		}
 			
 	},
