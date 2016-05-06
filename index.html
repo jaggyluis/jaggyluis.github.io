@@ -11,22 +11,23 @@
 </head>
 <body>
 	<div id="container" class="" data-bind="with: main">
+		<div id="num" class="outlined-right"></div>
 		<div id="nav" class="">
 			<header id="nav-header" class="">
 				<div id="nav-title"class="" data-bind="foreach: getTitle()">
 					<div class="nav-title-item" data-bind="text: '>>> '+ $data"></div>
 				</div>
+				<div class="br">br</div>
 			</header>
 			<section id="nav-section" data-bind="foreach: navItems()">
 				<div class="nav-item" data-bind="attr: {id: $data.name}"></div>
 			</section>
 		</div>
 		<div id="canvas" class="">
-			<header id="canvas-header" class="outlined-bottom" data-bind="foreach: headerItems()">
-				<div id="canvas-header-item" class-"outlined-right" data-bind="text: 'self._'+$data.name"></div>
+			<header id="canvas-header" class="outlined-top" data-bind="foreach: headerItems()">
+				<div id="canvas-header-item" class="" data-bind="text: 'self._'+$data.name"></div>
 			</header>
 			<section id="canvas-section">
-				<div id="num"></div>
 			</section>
 			
 			<!--
