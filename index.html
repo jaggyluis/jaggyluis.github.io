@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>LUIS MICHEL JAGGY</title>
 	<link rel="stylesheet" href="css/style.css">
-
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 	<script type='text/javascript' src='lib/knockout-3.4.0.js'></script>
 
 </head>
@@ -28,12 +28,8 @@
 				<div id="canvas-header-item" class="" data-bind="text: 'self._'+$data.name"></div>
 			</header>
 			<section id="canvas-section">
+				<svg id="canvas-vis"></svg>
 			</section>
-			
-			<!--
-			<canvas id="mat" >
-			</canvas>
-			-->
 		</div>
 	</div>
 
@@ -62,6 +58,7 @@
 
 	<script type="text/javascript" src="js/model.js"></script>
 	<script type="text/javascript" src="js/main.js"></script>
+	<script type="text/javascript" src="js/vis.js"></script>
 	<script type="text/html" id="nav_template"></script>
 </body>
 </html>
