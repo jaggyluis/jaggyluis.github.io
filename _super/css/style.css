@@ -1,0 +1,135 @@
+
+html,
+body {
+	height: 100%;
+	font: 400 11px/18px "PT Mono", monospace;
+    letter-spacing: 3px;
+    overflow-x: hidden;
+}
+img {
+	width: 100%;
+}
+
+div {
+	//border: 1px solid #f2f2f2;
+}
+
+#container  {
+	margin-top: 20px;
+}
+
+#nav {
+	width: 300px;
+	float: left;
+	padding-left: 20px;
+}
+
+.nav-title-item {
+	font-weight: bold; 
+}
+
+.nav-item-content {
+	padding-left: 20px;
+}
+
+.nav-item-content-el {
+	padding-left: 30px;
+	margin-left: -21px;
+}
+
+.nav-item-content-show {
+	display: inline-block;
+	padding-left: 10px;
+	font-size: 11px;
+}
+
+.nav-item-content-title {
+	display: inline-block;
+}
+
+.nav-item-header {
+	margin-left: -21px;
+	padding-left: 20px;
+}
+
+.nav-item-header:hover {
+	color: grey;
+	border-left: 1px solid black;
+}
+.nav-item-content-el:hover {
+	color: grey;
+	border-left: 1px solid black;
+}
+
+#canvas-header {
+	overflow: hidden;
+}
+
+#canvas{
+	margin-left: 300px;
+	height: 90%;
+	overflow-x: hidden;
+}
+
+#canvas-section {
+	padding-top: 10px;
+}
+
+#canvas-header-item {
+	text-align: right;
+	padding-right: 20px;
+	float: right;
+}
+
+#mat {
+	width: 100%;
+	height: 100%;
+}
+
+#num {
+	width: 10px;
+	height: 100%;
+	float: left;
+	padding-right: 20px;
+}
+
+.num-div {
+	width: 20px;
+	text-align: right;
+}
+
+
+/*
+ * General
+ */
+
+.outlined {
+	border: 1px dotted black;
+}
+
+.outlined-top {
+	border-top: 1px dotted black;
+}
+
+.outlined-right {
+	border-right: 1px dotted black;
+}
+
+.outlined-left {
+	border-left: 1px dotted black;
+}
+
+.outlined-bottom {
+	border-bottom: 1px dotted black;
+}
+
+.hidden {
+	display: none;
+}
+
+.br {
+	visibility: hidden;
+}
+
+.collapsed {
+    height: 0;
