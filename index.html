@@ -1,355 +1,64 @@
-<!DOCTYPE HTML>
+<!DOCTYMPE HTML>
 <html>
 <head>
-	<title>Aviation Passenger Type Profile Generator</title>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>LUIS MICHEL JAGGY</title>
 	<link rel="stylesheet" href="css/style.css">
+	<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script type='text/javascript' src='lib/knockout-3.4.0.js'></script>
+
 </head>
 <body>
-	<div id="container">
-		<div id="run-box">
-
-		
-			<div id="profile-box">
-				<div class="nav-bar">
-					<div>>> PASSENGER PROFILE SIMULATION</div>
-					<br>
-					<div class="input-box">
-						<input id="filter-terminal" class="filter" placeholder="All">
-						<div class="input-title">Terminal</div>
-					</div>
-					<div class="run-btn-box">
-						<button class="run-btn" id="profile-btn">Run</button>
-						<div class="hidden loading">
-							<img src="img/loading.gif">
-						</div>
-					</div>
+	<div id="container" class="" data-bind="with: main">
+		<div id="num" class="outlined-right"></div>
+		<div id="nav" class="">
+			<header id="nav-header" class="">
+				<div id="nav-title"class="" data-bind="foreach: getTitle()">
+					<div class="nav-title-item" data-bind="text: '>>> '+ $data"></div>
 				</div>
-				<div id="total-box" class="pad box">
-					<div class="title-box outlined-bottom">
-						<div class="title">TOTAL PASSENGER PROFILES</div>
-						<div class="show-box">
-							<button class="show-btn" disabled>Show Results</button>
-						</div>
-					</div>
-					<div class="result-box collapsed">
-						<div class="content-box" style="padding: 2px 0px 30px 0px">
-						</div>
-						<div class="save-box">
-							<button class="save-btn" id="total">Save</button>
-							<div class="chk-box">
-								<input class="chk-btn csv" type="checkbox" disabled></input>
-								<div class="chk-txt disabled">total.csv</div>
-							</div>
-							<div class="chk-box">
-								<input class="chk-btn json" type="checkbox" checked></input>
-								<div class="chk-txt">total.json</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div id="passenger-profile-box" class="pad box">
-					<div class="title-box outlined-bottom">
-						<div class="title">UNIQUE PASSENGER PROFILES</div>
-						<div class="show-box">
-							<button class="show-btn" disabled>Show Results</button>
-						</div>
-					</div>
-					<div class="result-box collapsed">
-						<div class="table-box">
-							<table id="passenger-profile-table">
-							</table>
-						</div>
-						<div class="save-box">
-							<button class="save-btn" id="profiles">Save</button>
-							<div class="chk-box">
-								<input class="chk-btn csv" type="checkbox" checked></input>
-								<div class="chk-txt">profiles.csv</div>
-							</div>
-							<div class="chk-box">
-								<input class="chk-btn json" type="checkbox"></input>
-								<div class="chk-txt">profiles.json</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div id="aircraft-profile-box" class="pad box">
-					<div class="title-box outlined-bottom">
-						<div class="title">AIRCRAFT PROFILES</div>
-						<div class="show-box">
-							<button class="show-btn" disabled>Show Results</button>
-						</div>
-					</div>
-					<div class="result-box collapsed">
-						<div class="content-box">
-						</div>
-						<div class="save-box">
-							<button class="save-btn" id="aircraft">Save</button>
-							<div class="chk-box">
-								<input class="chk-btn csv" type="checkbox" disabled></input>
-								<div class="chk-txt disabled">aircraft.csv</div>
-							</div>
-							<div class="chk-box">
-								<input class="chk-btn json" type="checkbox" checked></input>
-								<div class="chk-txt">aircraft.json</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-
-
-
-			<div id="timing-box">
-				<div class="nav-bar">
-					<div>>> PASSENGER TIMING SIMULATION</div>
-					<br>
-					<div class="input-box">
-						<input id="loadFactor" class="filter" placeholder="0.9">
-						<div class="input-title">Load Factor</div>
-					</div>
-					<div class="input-box">
-						<input id="timeFrame" class="filter" placeholder="0 to 24">
-						<div class="input-title">Time Frame</div>
-					</div>
-					<div id="input-box">
-						<input id="filter-flights" class="filter" placeholder="American Airlines">
-						<div class="input-title">Filter Flights</div>
-					</div>
-					<div id="input-box">
-						<input id="filter-passengers" class="filter" placeholder="leisure.departing">
-						<div class="input-title">Filter Passengers</div>
-					</div>	
-					<div class="run-btn-box">
-						<button class="run-btn" id="timing-btn" disabled>Run</button>
-						<div id="run-icn" class="hidden loading">
-							<img src="img/loading.gif">
-						</div>
-					</div>
-				</div>
-				<div id="flight-profile-box" class="pad box">
-					<div class="title-box outlined-bottom">
-						<div class="title">FLIGHTS</div>
-						<div class="show-box">
-							<button class="show-btn" disabled>Show Results</button>
-						</div>
-					</div>
-					<div class="result-box collapsed">
-						<div class="table-box">
-							<table id="flight-table">
-							</table>
-						</div>
-						<div class="save-box">
-							<button class="save-btn" id="flights">Save</button>
-							<div class="chk-box">
-								<input class="chk-btn csv" type="checkbox" checked></input>
-								<div class="chk-txt">flights.csv</div>
-							</div>
-							<div class="chk-box">
-								<input class="chk-btn json" type="checkbox"></input>
-								<div class="chk-txt">flights.json</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div id="passenger-timing-box" class="pad box">
-					<div class="title-box outlined-bottom">
-						<div class="title">PASSENGERS</div>
-						<div class="show-box">
-							<button class="show-btn" disabled>Show Results</button>
-						</div>
-					</div>
-					<div class="result-box collapsed">
-						<div class="table-box">
-							<table id="passenger-timing-table">
-							</table>
-						</div>
-						<div class="save-box">
-							<button class="save-btn" id="passengers">Save</button>
-							<div class="chk-box">
-								<input class="chk-btn csv" type="checkbox" checked></input>
-								<div class="chk-txt">passengers.csv</div>
-							</div>
-							<div class="chk-box">
-								<input class="chk-btn json" type="checkbox"></input>
-								<div class="chk-txt">passengers.json</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+				<div class="br">br</div>
+			</header>
+			<section id="nav-section" data-bind="foreach: navItems()">
+				<div class="nav-item" data-bind="attr: {id: $data.name}"></div>
+			</section>
+		</div>
+		<div id="canvas" class="">
+			<header id="canvas-header" class="outlined-top" data-bind="foreach: headerItems()">
+				<div id="canvas-header-item" class="" data-bind="text: 'self._'+$data.name"></div>
+			</header>
+			<section id="canvas-section">
+				<svg id="canvas-vis"></svg>
+			</section>
 		</div>
 	</div>
 
 
-	<!-- TEMPLATES 
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	-->
+	<!-- templates -->
 
-	<script type="text/template" id="passenger-box-template">
-		<div class="passenger-box">
-			<table class="passenger-timing-table">
-				<tr class="bold">
-					<td>Name</td>
-					<td class="count">Count</td>
-					<td>% Total Count</td>
-					<td>% Bags</td>
-					<td>% br Food</td>
-					<td>% Food</td>
-					<td>% br Shop</td>
-					<td>% Shop</td>
-					<td>Weighted</td>
-				</tr>
-			</table>
-			<div id="" class="expand"><img src="img/expand.png"></div>
-			<div class="table-container outlined-left collapsed pad"></div>
-		</div>
-	</script>
-	<script type="text/template" id="passenger-type-header">
-		<tr class="bold">
-			<td>Name</td>
-			<td class="count">Count</td>
-			<td>% Total Count</td>
-			<td>% Bags</td>
-			<td>% br Food</td>
-			<td>% Food</td>
-			<td>% br Shop</td>
-			<td>% Shop</td>
-			<td>Weighted</td>
-		</tr>
-	</script>
-	<script type="text/template" id="passenger-type-template">
-		<tr>
-			<td>%name%</td>
-			<td class="count">%count%</td>
-			<td>%percent%</td>
-			<td>%bags%</td>
-			<td>%brfood%</td>
-			<td>%food%</td>
-			<td>%brshop%</td>
-			<td>%shop%</td>
-			<td>%weighted%</td>
-		</tr>
-	</script>
-
-
-	<script type="text/template" id="flight-table-header">
-		<tr class="bold">
-			<td>Name</td>
-			<td class="count">Code</td>
-			<td class="med">Flight ID</td>
-			<td>Load Factor</td>
-			<td>Seats</td>
-			<td>Passenger Count</td>
-			<td>Gate</td>
-			<td>Departure Time</td>
-		</tr>
-	</script>
-	<script type="text/template" id="flight-table-template">
-		<tr>
-			<td>%name%</td>
-			<td class="count">%code%</td>
-			<td class="med">%id%</td>
-			<td>%loadFactor%</td>
-			<td>%seats%</td>
-			<td>%count%</td>
-			<td>%gate%</td>
-			<td>%time%</td>
-		</tr>
-	</script>
-
-
-	<script type="text/template" id="flight-box-template">
-		<div class="flight-box">
-			<div class="flight-name">%name%</div>
-			<div id="%name%-hook" class="expand"><img src="img/expand.png"></div>
-			<div class="flight-table-box table-container pad outlined-left collapsed"><tt></div>
-		</div>
-	</script>
-	<script type="text/template" id="flight-type-template">
-		<div>		
-			<table class="table-sm">
-				<tr class="bold">
-					<td class="top">Name</td>
-					<td class="top count">Count</td>
-					<td class="top"></td>
-				</tr>
-				<tr>
-					<td>%type%</td>
-					<td>%count%</td>
-				</tr>
-			</table>
-			<div id="%name%-%type%-hook" class="expand"><img src="img/expand.png"></div>
-			<div class="pad outlined-left table-container collapsed">
-				<table class="table-sm">
-					<tr class="bold">
-						<td class="top">Name</td>
-						<td class="top count">Count</td>
-						<td class="top">% Passengers</td>
-						<td class="top">Weighted</td>
-						<td class="top">Arrival Distribution</td>
-					</tr>
-					<tl>
-				</table>
+	<script type="text/template" id="featured-template">
+		<div class="canvas-featured-el outlined-bottom">
+			<div class="featured-img">
+				<img src="%src%">
 			</div>
+			<div class="featured-title">%title%</div>
 		</div>
 	</script>
-	<script type="text/template" id="flight-info-template">
-		<tr>
-			<td>%name%</td>
-			<td class="count">%count%</td>
-			<td >%percent%</td>
-			<td>%weighted%</td>
-			<td class="med dist">%dist%</td>
-		</tr>
+
+	<script type="text/template" id="project-template">
+		<section id="project-box">
+			<div id="project-reel">
+				<div id="reel-box">
+					<img src="%src%"id="reel-img">
+				</div>
+				<div id="project-title">%name%</div>
+			</div>
+		</section>
 	</script>
 
-
-	<script type="text/template" id="passenger-timing-header">
-		<tr class="bold">
-			<td class="med">Name</td>
-			<td class="count">Gender</td>
-			<td class="count">Bags</td>
-			<td class="count">Pre Check</td>
-			<td class="med">Flight ID</td>
-			<td>Arrival</td>
-			<td>Security</td>
-			<td>Concourse</td>
-			<td>Gate</td>
-			<td>Boarding</td>
-			<td>Departure</td>
-		</tr>
-	</script>
-	<script type="text/template" id="passenger-timing-template">
-		<tr>
-			<td class="med">%passengerType%</td>
-			<td class="count">%gender%</td>
-			<td class="count">%bags%</td>
-			<td class="count">%isPreCheck%</td>
-			<td class="med">%flightID%</td>
-			<td>%arrival%</td>
-			<td>%security%</td>
-			<td>%concourse%</td>
-			<td>%gate%</td>
-			<td>%boarding%</td>
-			<td>%departure%</td>
-		</tr>
-	</script>
-
-	<!-- APP 
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	-->
-	<!-- aviation module -->
-	<script src="js/lib/aviation/airports.js"></script>
-	<script src="js/lib/aviation/airlines.js"></script>
-	<script src="js/lib/aviation/aircraft.js"></script>
-	<script src="js/lib/aviation/tt.js"></script>
-	<script src="js/lib/aviation/aviation.js"></script>
-	<!-- Main App -->
-	<script src="js/view.js"></script>
-	<script src="js/app.js"></script>
+	<script type="text/javascript" src="js/model.js"></script>
+	<script type="text/javascript" src="js/main.js"></script>
+	<script type="text/javascript" src="js/vis.js"></script>
+	<script type="text/html" id="nav_template"></script>
 </body>
 </html>
-
-
