@@ -1,0 +1,397 @@
+
+html,
+body {
+	font-family: Arial, Helvetica, sans-serif;
+}
+button{
+	margin-bottom: 1px;
+	width: 200px;
+	border: 1px solid grey;
+	font-size: 10px;
+	box-sizing: border-box;
+	padding-left: 2px;
+}
+div {
+	font-size: 10px;
+}
+table {
+	//float: left;
+	border-collapse: collapse;
+	font-size: 9px;
+	width: 1000px;
+	table-layout: fixed;
+}
+td {
+	border: 1px solid grey;
+	width: 300px;
+}
+td+td {
+	width: auto;
+	text-align: right;
+	padding-right: 2px;
+}
+td:hover {
+	background-color: yellow;
+}
+tr:hover {
+	background-color: #ffffcc;
+}
+img {
+	width: 100%;
+	height: 100%;
+}
+
+/*
+ * 	-----------------------------------------
+ */
+
+
+/* Main Container */
+ #run-box {
+	float: left;
+	border-right: 1px dotted grey;
+	min-width: 1254px;
+	margin-top: -100px;
+	margin-bottom: 50px;
+	padding-bottom: 15px;
+	padding-top: 160px;
+}
+
+/* IMG Attributes */
+.loading {
+	width: 15px;
+	height: 15px;
+	float: left;
+}
+
+/* General Box */
+.box {
+	padding-bottom: 10px;
+	overflow: hidden;
+	clear: both;
+}
+
+/* Nav Bar */
+ .nav-bar {
+	margin-left: 1050px;
+	padding-left: 5px;
+	padding-bottom: 1px;
+	float: left;
+	left: 30px;
+	position: relative;
+}
+.input-title {
+	display: inline-block;
+	margin-left: -107px;
+	position: relative;
+	text-align: right;
+	width: 100px;
+}
+.filter {
+	margin-bottom: 1px;
+	width: 200px;
+	border: 1px solid grey;
+	font-size: 10px;
+	box-sizing: border-box;
+	padding-left: 1px;
+}
+.run-btn-box {
+	width: 230px;
+	overflow: hidden;
+}
+.run-btn {
+	float: left;
+	margin-right: 4px;
+}
+
+/* Title Box */
+.title-box {
+	margin-bottom: 5px;
+	overflow: hidden;
+	clear: both;
+}
+.title {
+	width: 200px;
+	float: left;
+	top: 4px;
+	position: relative;
+}
+
+/* Result Box */
+.show-box {
+	float: right;
+}
+.table-box {
+	float: left;
+}
+.content-box {
+	float: left;
+	padding-top: 16px;
+}
+.save-box {
+	float: right;
+	width: 200px;
+	position: absolute;
+	left: 1093px;
+}
+.save-btn {
+	background-color: #f2f2f2;
+}
+.chk-box {
+	height: 13px;
+	float: left;
+	padding-right: 10px;
+}
+.chk-btn {
+	height: 10px;
+	float: left;
+	margin: 2px;
+}
+.chk-txt {
+	margin-top: 1px;
+	float: left;
+	width: 70px;
+}
+
+/* Expand Button */
+.expand {
+	width: 10px;
+	height: 10px;
+	margin-left: -20px;
+	position: relative;
+	top: -10px;
+	clear: both;
+	overflow: hidden;
+}
+.expand:hover {
+	background-color: yellow;
+}
+
+/* General Display */
+.hidden {
+	visibility: hidden;
+}
+.collapsed  {
+	display: none;
+}
+
+
+.top {
+	border-top: none;
+}
+.outlined-left {
+	border-left : 1px solid grey;
+}
+.outlined-bottom {
+	border-bottom: 1px dotted grey;
+}
+.bounded {
+	border: 1px solid black;
+}
+
+
+.sel {
+	background-color: yellow;
+}
+.pad {
+	padding-left: 50px;
+}
+
+
+.small {
+	width: 30px;
+}
+.count {
+	width: 47px;
+}
+.med {
+	width: 200px;
+}
+.dist {
+	width: 500px;
+}
+.disabled {
+	color: #f2f2f2;
+}
+.bold {
+	font-weight: bold;
+}
+
+/*	--------------------------
+ * 	parcoords
+*/
+
+.parcoords > svg, .parcoords > canvas { 
+  font: 10px sans-serif;
+  position: absolute;
+}
+.parcoords > canvas {
+  pointer-events: none;
+}
+
+.parcoords text.label {
+  cursor: default;
+}
+
+.parcoords rect.background {
+  fill: transparent;
+}
+.parcoords rect.background:hover {
+  fill: rgba(120,120,120,0.2);
+}
+.parcoords .resize rect {
+  fill: rgba(0,0,0,0.1);
+}
+.parcoords rect.extent {
+  fill: rgba(255,255,255,0.25);
+  stroke: rgba(0,0,0,0.6);
+}
+.parcoords .axis line, .parcoords .axis path {
+  fill: none;
+  stroke: #222;
+  shape-rendering: crispEdges;
+}
+.parcoords canvas {
+  opacity: 1;
+  -moz-transition: opacity 0.3s;
+  -webkit-transition: opacity 0.3s;
+  -o-transition: opacity 0.3s;
+}
+.parcoords canvas.faded {
+  opacity: 0.25;
+}
+.parcoords {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+    background-color: white;
+}
+
+/* 	-------------------------------- 
+*	divgrid
+*/
+
+/* data table styles */
+#grid { 
+	height: 198px; 
+}
+.row, .header { 
+	clear: both;
+	overflow: hidden; 
+	font-size: 12px; 
+	border-bottom: 1px solid black;
+	width : 1200px;
+}
+.row:hover {
+	background-color: #ffffcc;
+}
+.header { 
+	font-weight: bold; 
+}
+.cell { 
+	float: left; 
+	white-space: nowrap; 
+	width: 60px; 
+	border-left: 1px solid black;
+	background-color: white;
+}
+.cell:hover {
+	background-color: yellow;
+}
+.col-0 { 
+	width: 300px;
+}
+
+/* other */
+.table-container {
+	clear: both;
+	//overflow: hidden;
+	margin-bottom: 10px;
+	border-top: 1px dotted grey;
+}
+.table-box {
+	min-height: 500px;
+	width: 1000px;
+	padding-top: 30px;
+}
+.table {
+	margin-top : 20px;
+	height: 300px;
+	overflow-y: scroll;
+	overflow-x: scroll;
+	background-color: #f2f2f2;
+}
+
+#passenger-timing-table .col-4 {
+	width: 250px;
+}
+
+#flight-profile-table {
+	//max-height: none;
+}
+
+#flight-table .col-1,
+#flight-table .col-2 {
+	width: 30px;
+}
+#flight-table .col-3 {
+	width: 250px;
+}
+
+/* dendogram */
+.node circle {
+  fill: #999;
+}
+
+.node text {
+  font: 10px sans-serif;
+}
+
+.node--internal circle {
+  fill: #555;
+}
+
+.node--internal text {
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+
+.link {
+  fill: none;
+  stroke: #555;
+  stroke-opacity: 0.8;
+  stroke-width: 1px;
+}
+
+.datum-line {
+  fill: none;
+  stroke: #555;
+  stroke-opacity: 0.5;
+  stroke-width: 0.2px;
+}
+
+/* logos */
+#logo-box {
+	position : relative;
+	left: 30px;
+	margin-left: 1050px;
+	padding-top: 20px;
+	padding-left: 5px;
+	opacity: 0.5;
+}
+
+#superspace-logo {
+	width: 150px;
+	margin-left: 26px;
+}
+
+#woods-bagot-logo {
+	width: 60px;
+	padding-top: 5px;
+	margin-left: 72px;
+}
+
+
+
