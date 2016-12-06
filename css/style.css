@@ -9,6 +9,8 @@
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+
+    cursor: default !important;
 }
 
 /*
@@ -24,6 +26,7 @@
     margin-top: 5px;
     width: 60%;
     height: 97%;
+    position: relative;
 }
 
 #scene-frame {
@@ -32,11 +35,28 @@
 }
 
 #scene-tags {
-    height: 92%;
+    height: 97%;
     position: absolute;
-    width: 59%;
+    width: 100%;
     overflow: hidden;
     pointer-events: none;
+}
+
+#scene-selector {
+    height: 97%;
+    position: absolute;
+    width: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 500;
+}
+
+#scene-controls {
+    position: absolute; 
+    left: 0px; 
+    top: 21px;
+    background-color: white;
+    padding: 3px;
 }
 
 #evals-box {
@@ -52,7 +72,8 @@
 }
 
 #evals-time {
-    padding: 15px;
+    padding: 10px;
+    margin-top: 25px;
 }
 
 #helper {
@@ -60,6 +81,7 @@
     height:99%;
     position: absolute;
     pointer-events: none;
+    z-index: 4;
 }
 
 /*
@@ -67,16 +89,21 @@
 */
 
 .frame {
-    max-height: 97%;
+    max-height: 90%;
     width: 100%;
     overflow-y: scroll;
     overflow-x: hidden;
 }
 
 .comparisons-box {
-    height: 200px;
+    //height: 200px;
     background-color: white;
-    border: 1px solid #f2f2f2;
+    //border: 1px solid #f2f2f2;
+}
+
+.summary-box {
+    //background-color: white;
+    padding-top: 15px;
 }
 
 .title-bar {
@@ -84,6 +111,8 @@
     border-bottom: 1px solid #f2f2f2;
     width: 100%;
     background-color: white;
+    z-index: 1;
+    position: relative;
 }
 
 .title {
@@ -105,19 +134,22 @@
 }
 
 .slider-bar {
-    height: 7%;
+    height: 10%;
     margin-top: 6px;
     overflow-y: scroll;
     overflow-x: hidden;
     margin-left: -5px;
+    position: relative;
 }
 
 .slider-input {
     -webkit-appearance: none;
-    width: 100%;
+    width: 99%;
     height:1px;
     background-color: black;
     margin-top: 10px;
+    position: absolute;
+    pointer-events:none;
 }
 
 .slider-input::-webkit-slider-thumb {
@@ -127,6 +159,7 @@
 	width: 10px;
 	height: 20px;
 	cursor: pointer;
+    pointer-events:all !important;
 }
 
 .settings {
@@ -187,7 +220,7 @@
 
 .tag {
     font-size: 8px;
-    position: absolute;
+    position: inherit;
     overflow: hidden;
     pointer-events: all;  
 }
@@ -208,22 +241,41 @@
 
 .comparator-box {
     background-color: white;
+    margin-left: 1px;
+}
+.comparator-box:hover {
+    border-left: 1px solid black;
+    margin-left: 0px;
 }
 
-
-
-/*
-    basic types
-*/
-
-svg {
-    //border-bottom: 2px solid #f2f2f2;
-}
-
-svg:hover {
-    //border: 1px solid #f2f2f2;
+.comparator-svg:hover {
     background-color: #f2f2f2;
 }
+
+.selection {
+    stroke          : gray;
+    stroke-width    : 1px;
+    stroke-dasharray: 4px;
+    stroke-opacity  : 0.5;
+    fill            : transparent;
+}
+
+.selecting {
+    border: 1px solid black;
+    pointer-events: all !important;
+}
+
+.state {
+    stroke  : gray;
+    fill    : white;
+}
+
+.controls {
+    font-size: 8px;
+    //font-weight: bold;
+    padding: 2px;
+}
+
 
 /*
     attributes
@@ -255,4 +307,7 @@ svg:hover {
 
 .color-default {
 }
+
+
+
 

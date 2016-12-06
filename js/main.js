@@ -1,8 +1,11 @@
-﻿/// <reference path="lib/aviation.min.js" />
+﻿/// <reference path="lib/d3.summarator.js" />
+/// <reference path="model.js" />
+/// <reference path="lib/d3.selector.js" />
+/// <reference path="lib/cdr.min.js" />
 /// <reference path="lib/three-dxf.js" />
 /// <reference path="lib/d3.v3.min.js" />
-/// <reference path="model.js" />
 /// <reference path="lib/three.js" />
+/// <reference path="lib/d3.comparator.js" />
 
 (function () {
 
@@ -14,15 +17,38 @@
         intersects,
         mouse,
         frustum,
-        projScreenMatrix;
-        
+        projScreenMatrix;    
 
     var helper = document.getElementById("helper"),
-        slider = document.getElementById("evals-slider-input"),
+        helperRect = helper.getBoundingClientRect();
+
+    var slider0 = document.getElementById("evals-slider-input-0"),
+        slider1 = document.getElementById("evals-slider-input-1")
         time = document.getElementById("evals-time"),
         tags = document.getElementById("scene-tags");
 
-    var comparisonComparators = [];
+    var sceneBox = document.getElementById("scene-box"),
+        sceneFrame = document.getElementById("scene-frame"),
+        sceneRect = sceneFrame.getBoundingClientRect(),
+        sceneSelector = document.getElementById("scene-selector");
+
+    var evalsBox = document.getElementById("evals-box"),
+        evalsRect = evalsBox.getBoundingClientRect(),
+        evalsWidth = evalsBox.clientWidth;
+
+    var evaluationsFrame = document.getElementById("evaluations-frame"),
+        evaluationsToggle = document.getElementById("evals-title-evaluations"),
+        evaluationsComparators = [];
+
+    var comparisonsFrame = document.getElementById("comparisons-frame"),
+        comparisonsToggle = document.getElementById("evals-title-comparisons"),
+        comparisonsComparators = [];
+
+    var summaryFrame = document.getElementById("summary-frame"),
+        summaryToggle = document.getElementById("evals-title-summary");
+
+    var legendOptions = ['Scheme1', "Scheme2"];
+    var colorScale = function (d, i) { return ["#cc0000", "#006699"][i] }
 
     var svg = d3.select(helper)
         .append("svg")
@@ -34,18 +60,25 @@
         .y(function (d) { return d.y; })
         .interpolate('linear');
 
+    var shiftDown = false,
+        cntrlDown = false;
+
+    var MAXDENSITY = -1; // max density
+
     d3.csv("doc/occupationdata1.csv", function (d1) {
 
         d3.csv("doc/occupationdata2.csv", function (d2) {
 
-            readFile("doc/spatialstructure.dxf", function (dxf) {
+            cdr.core.file.readFile("doc/spatialstructure.dxf", function (o) {
+
+                var parser = new window.DxfParser();
+                var dxf = parser.parseSync(o);
 
                 model = new Model();
                 model.setDataNodes(buildDataNodes(d1, d2));
                 model.setDXFData(dxf);
 
-                init(model);
-                
+                init(model);            
             });
         })
     });
@@ -54,21 +87,13 @@
     
         buildEvalsFrames(model);
         buildEvalsSettings(model);
-        buildScene(model, document.getElementById("scene-frame"));
+        buildScene(model);
         buildSceneSettings(model);
-        buildSlider(model);
+        buildsliders(model);
+        buildKeyEvents(model);
     }
 
     function buildEvalsFrames(model) {
-
-        var evaluationsFrame = document.getElementById("evaluations-frame"),
-            evaluationsToggle = document.getElementById("evals-title-evaluations");
-
-        var comparisonsFrame = document.getElementById("comparisons-frame"),
-            comparisonsToggle = document.getElementById("evals-title-comparisons");
-
-        var summaryFrame = document.getElementById("summary-frame"),
-            summaryToggle = document.getElementById("evals-title-summary");
 
         buildEvaluations(model, evaluationsFrame);
         buildComparisons(model, comparisonsFrame);
@@ -111,25 +136,19 @@
     function buildEvalsSettings(model) {
 
         var settingsButton = document.getElementById("evals-settings"),
+            settingsButtonRect = settingsButton.getBoundingClientRect(),
             settingsBox = document.getElementById("evals-settings-box");
-
-        var settingsButtonRect = settingsButton.getBoundingClientRect();
 
         settingsBox.style.left = settingsButtonRect.right - settingsBox.clientWidth + "px";
         settingsBox.style.top = settingsButtonRect.bottom + "px";
 
-        settingsButton.addEventListener("mouseenter", function () {
-            settingsBox.classList.remove("hidden");
-        });
-        settingsButton.addEventListener("mouseleave", function () {
-            setTimeout(function () {
-                settingsBox.classList.add("hidden");
-            }, 200);          
+        settingsButton.addEventListener("click", function (e) {
+            settingsBox.classList.toggle("hidden");
         });
 
         var settingsFilterTypes = Object.keys(model.getDataNodeLocationTypes());
         var settingsFilterTypesCheckBox = document.getElementById("evals-settings-filter-types-checkbox");
-        var settingsFilterTypesCheckbox =  buildCheckbox(settingsFilterTypes, "_locationType", settingsFilterTypesCheckBox);
+        var settingsFilterTypesCheckBoxes =  buildCheckbox(settingsFilterTypes, "_locationType", settingsFilterTypesCheckBox);
 
         var namesMapped = model.getDataNodeNames();
 
@@ -139,16 +158,163 @@
         var settingsFilterNamesCheckbox = document.getElementById("evals-settings-filter-names-checkbox");
         var settingsFilterNamesCheckboxes = buildCheckbox(settingsFilterNames, "_name", settingsFilterNamesCheckbox);
 
+        var settingsFilterTypesTextInput = document.getElementById("filter-types-text-input");
+
+        settingsFilterTypesTextInput.addEventListener("click", function (e) {
+            e.stopPropagation();
+        });
+
+        settingsFilterTypesTextInput.addEventListener("keyup", function (e) {
+
+            var dataNodes = model.getDataNodes(),
+                property = "_name",
+                match = new RegExp(this.value.toLowerCase());
+
+            for (var j = 0; j < dataNodes.length; j++) {
+
+                if (!dataNodes[j].isSelected) continue;
+
+                var prop = dataNodes[j][property].toLowerCase();
+
+                if (prop.match(match) !== null) {
+
+                    toggleActive(dataNodes[j], true);
+                }
+                else {
+
+                    toggleActive(dataNodes[j], false);
+                }
+            }
+
+            buildComparisons(model, comparisonsFrame);
+            buildSummary(model, summaryFrame);
+        });
+
         return model;
+    }
+
+    function buildSceneSettings(model) {
+
+        var settingsButton = document.getElementById("scene-settings"),
+            settingsButtonRect = settingsButton.getBoundingClientRect(),
+            settingsBox = document.getElementById("scene-settings-box");
+
+        settingsBox.style.left = settingsButtonRect.right - settingsBox.clientWidth + "px";
+        settingsBox.style.top = settingsButtonRect.bottom + "px";
+
+        settingsButton.addEventListener("click", function (e) {
+            settingsBox.classList.toggle("hidden");
+        });
+
+        var settingsTextToggleItem = document.getElementById("text-toggle-info"),
+            settingsTextToggleCheckBox = document.getElementById("text-toggle-input");
+
+        var dataNodes = model.getDataNodes();
+
+        settingsTextToggleItem.addEventListener("click", function (e) {
+
+            settingsTextToggleCheckBox.checked = !settingsTextToggleCheckBox.checked
+            cdr.core.event.eventFire(settingsTextToggleCheckBox, "change", true);
+            e.stopPropagation();
+        });
+
+        settingsTextToggleCheckBox.addEventListener("click", function (e) {
+            e.stopPropagation();
+        });
+
+        settingsTextToggleCheckBox.addEventListener("change", function (e) {
+
+            for (var i = 0; i < dataNodes.length; i++) {
+
+                var tag = dataNodes[i].getAttribute("tag")
+
+                tag.classList.toggle("hidden");
+            }
+            e.stopPropagation();
+        });
+
+        return model;
+    }
+
+    function buildCheckbox(types, property, domElement) {
+
+        var clones = [],
+            dataNodes = model.getDataNodes();
+
+        domElement.addEventListener("click", function (e) {
+            e.stopPropagation();
+        })
+
+        for (var i = 0; i < types.length; i++) {
+
+            var template = document.querySelector("#filter-types-checkbox-template");
+            var clone = document.importNode(template.content, true);
+
+            var settingsSubItem = clone.querySelector("#filter-types-checkbox-item-"),
+                settingsSubItemInput = clone.querySelector("#filter-types-checkbox-input-"),
+                settingsSubItemInfo = clone.querySelector("#filter-types-checkbox-info-");
+
+            settingsSubItem.id += types[i];
+            settingsSubItemInput.id += types[i];
+            settingsSubItemInfo.id += types[i];
+
+            settingsSubItemInfo.innerHTML = types[i];
+
+            for (var j = 0; j < dataNodes.length; j++) {
+
+                if (dataNodes[j][property] === types[i]) {
+
+                    if (dataNodes[j].getAttribute("input") === null) {
+                        dataNodes[j].setAttribute("input", []);
+                    }
+
+                    dataNodes[j].getAttribute("input").push(settingsSubItemInput);
+                }
+            }
+
+            settingsSubItemInfo.addEventListener("click", (function (locationType, e) {
+
+                var item = document.getElementById("filter-types-checkbox-input-" + locationType);
+
+                item.checked = !item.checked
+                cdr.core.event.eventFire(item, "change", true);
+
+                e.stopPropagation();
+
+            }).bind(this, types[i]));
+
+            settingsSubItemInput.addEventListener("change", (function (locationType, e) {
+
+                var bool = e.srcElement.checked;
+
+                for (var j = 0; j < dataNodes.length; j++) {
+
+                    if (dataNodes[j].getAttribute("input").includes(e.srcElement)) {
+
+                        toggleActive(dataNodes[j], bool);
+                    }
+                }
+
+                buildComparisons(model, comparisonsFrame);
+                buildSummary(model, summaryFrame);
+               
+                e.stopPropagation();
+
+            }).bind(this, types[i]));
+
+            clones.push(clone);
+            domElement.appendChild(clone);
+        }
+
+        return clones;
     }
 
     function buildEvaluations(model, domElement) {
 
         domElement.innerHTML = "";
 
-        var width = width = document.getElementById("evals-box").clientWidth * 0.95;
+        var width = evalsWidth * 0.95;
         var node = d3.select(domElement),
-            collapsed = true,
             dataNodes = model.getDataNodes().filter(function (dataNode) {
                 return dataNode.isActive;
             });
@@ -156,31 +322,63 @@
         dataNodes.forEach(function (dataNode) {
 
             var data = dataNode.findData(),
-                points = formatToComparator(data),
-                id = aviation.core.string.generateUUID();
+                dataFormatted = [],
+                id = cdr.core.string.generateUUID();
 
-            var height = collapsed ? 10 : 100;
-            var comparator = d3.comparator({ height: height, width: width}).collapsed(collapsed);
+            for (var scheme in data) {
 
-            node.datum(points).call(comparator);
+                var s = [];
+
+                for (var key in data[scheme]) {
+
+                    if (cdr.core.time.isTime(key)) {
+
+                        s.push([data[scheme][key] / data[scheme]["Dimension"]]);
+                    }
+                }
+
+                dataFormatted.push(s);                
+            }
+
+            var vals = [+slider0.value, +slider1.value],
+                min = Math.min(vals[0], vals[1]),
+                max = Math.max(vals[0], vals[1]);
+
+            var comparator = d3.comparator({
+                    height: 10,
+                    width: width,
+                    margin: { top: 0, right: 5, bottom: 0, left: 5 },
+                    color: colorScale,
+                    ignore: [],
+                    max: MAXDENSITY,
+                    highlighted: { start: min, end: max }
+                })
+                .collapsed(true)
+                .id(id);
+
+            node.datum(dataFormatted).call(comparator);
 
             comparator
-                .title(getName(dataNode, !comparator.isCollapsed()))
-                .id(id)
-                .setHighlightedValue(+slider.value)
+                .title(dataNode.getName())
                 .onClick(function () {
 
-                    var height = comparator.isCollapsed()
-                        ? 100
-                        : 10;
+                    var vals = [+slider0.value, +slider1.value],
+                        min = Math.min(vals[0], vals[1]),
+                        max = Math.max(vals[0], vals[1]);
 
-                    comparator
-                        .height(height)
-                        .rebuild(!comparator.isCollapsed())
-                        .title(getName(dataNode, !comparator.isCollapsed()));
+                    this
+                        .collapsed(!this.collapsed())
+                        .margin((this.collapsed()
+                            ? { top: 0, right: 5, bottom: 0, left: 5 }
+                            : { top: 10, right: 5, bottom: 5, left: 5 }))
+                        .height((this.collapsed() ? 10 : 100))
+                        .highlighted({ start: min, end: max })
+                        .build()
+                        .title(this.title())
                 });
 
-            dataNode.setAttribute("colors", comparator.getColors());
+            evaluationsComparators.push(comparator);
+            dataNode.setAttribute("colors", comparator.colors());
             dataNode.setAttribute("id", id);
             dataNode.setAttribute("comparator", comparator);
         });
@@ -190,11 +388,10 @@
 
     function buildComparisons(model, domElement) {
 
-        var data = formatToAnalysis(model),
-            height = 200,
-            width = document.getElementById("evals-box").clientWidth * 0.95;
-        
-        console.log(data);
+        domElement.innerHTML = "";
+
+        var data = buildTypeData(model.getDataFormatted(), 0, -1),
+            width = evalsWidth * 0.95;
 
         for (var type in data) {
 
@@ -204,60 +401,47 @@
 
             domElement.appendChild(typeDiv);
 
-            for (var scheme in data[type]) {
-
-                 data[type][scheme] = Object.keys(data[type][scheme]).reduce(function (obj, key) {
-
-                     var values = data[type][scheme][key],
-                         deviation = d3.deviation(values),
-                         mean = d3.mean(values),
-                         ret;
-                     
-
-                     var qVals = [],
-                         qMean,
-                         qDev;
-
-                     for (var i = 0; i < values.length; i++) {
-                         
-                         if (values[i] >= mean - 2 * deviation &&
-                             values[i] <= mean + 2 * deviation) {
-
-                             qVals.push(values[i]);
-                         }
-                     }
-
-                     qMean = d3.mean(qVals);
-                     qDev = d3.deviation(qVals);
-
-                     ret = qMean
-                         ? qMean
-                         : mean
-
-                     ret = mean - deviation;
-
-                     obj[key] = ret > 0 ? ret : 0;
-
-                    return obj;
-
-                }, {});
-            }
-
             var node = d3.select(typeDiv);
-            var points = formatToComparator(data[type]);
-            var comparator = d3.comparator({
-                height: height,
-                width: width,
-                opacity: 0.3
-            }).collapsed(false);
 
-            node.datum(points).call(comparator);
+            var vals = [+slider0.value, +slider1.value],
+                min = Math.min(vals[0], vals[1]),
+                max = Math.max(vals[0], vals[1]);
+
+            var comparator = d3.comparator({
+                height: 10,
+                width: width,
+                margin: { top: 0, right: 5, bottom: 0, left: 5 },
+                color: colorScale,
+                ignore: [],
+                max: MAXDENSITY,
+                highlighted: { start: min, end: max }
+                })
+                .collapsed(true);
+
+            node.datum(data[type]).call(comparator)
 
             comparator
-                .title(type + " occupancy values")
-                .setHighlightedValue(+slider.value);
+                .title(type)
+                .onClick(function () {
 
-            comparisonComparators.push(comparator);
+                    var vals = [+slider0.value, +slider1.value],
+                        min = Math.min(vals[0], vals[1]),
+                        max = Math.max(vals[0], vals[1]);
+
+                    this
+                        .collapsed(!this.collapsed())
+                        .margin((this.collapsed()
+                            ? { top: 0, right: 5, bottom: 0, left: 5 }
+                            : { top: 10, right: 5, bottom: 5, left: 5 }))
+                        .height((this.collapsed() ? 10 : 400))
+                        .highlighted({start: min, end: max})
+                        .build()
+                        .title(this.title())
+               
+                });
+
+            comparisonsComparators.push(comparator);
+
         }
 
         return model;
@@ -265,83 +449,84 @@
 
     function buildSummary(model, domElement) {
 
-    }
+        domElement.innerHTML = "";
 
-    function buildSceneSettings(model) {
+        var min = Math.min(+slider0.value, +slider1.value),
+            max = Math.max(+slider0.value, +slider1.value);
 
-        var settingsButton = document.getElementById("scene-settings"),
-            settingsBox = document.getElementById("scene-settings-box");
+        var data = buildTypeData(model.getDataFormatted(), min, max),
+            width = evalsWidth,
+            height = width;
 
-        var settingsButtonRect = settingsButton.getBoundingClientRect();
+        for (var type in data) {
+            
+            var vals = [];
 
-        var settingsTextToggleItem = document.getElementById("text-toggle-info"),
-            settingsTextToggleCheckBox = document.getElementById("text-toggle-input");
+            data[type].forEach(function (scheme) {
 
-        var dataNodes = model.getDataNodes();
+                var n = [];
 
-        settingsBox.style.left = settingsButtonRect.right - settingsBox.clientWidth + "px";
-        settingsBox.style.top = settingsButtonRect.bottom + "px";
-        settingsButton.addEventListener("mouseenter", function () {
-            settingsBox.classList.remove("hidden");
+                for (var i = 0; i < scheme.length; i++) {
+                    for (var j = 0; j < scheme[i].length; j++) {
+                        n.push(scheme[i][j]);
+                    }
+                }
+
+                vals.push(n);
+            });
+
+            data[type] = vals;
+        }
+
+        var summaryDiv = document.createElement("div");
+        summaryDiv.classList.add("summary-box");
+
+        domElement.appendChild(summaryDiv);
+
+        var node = d3.select(summaryDiv);
+        var summarator = d3.summarator({
+            height: height,
+            width: width,
+            color: colorScale,
+            max: MAXDENSITY
         });
-        settingsButton.addEventListener("mouseleave", function () {
 
-            setTimeout(function () {
-
-                settingsBox.classList.add("hidden");
-
-            }, 200);
-        });
-
-        settingsTextToggleItem.addEventListener("click", function () {
-
-            settingsTextToggleCheckBox.checked = !settingsTextToggleCheckBox.checked
-            eventFire(settingsTextToggleCheckBox, "change");
-        });
-
-        settingsTextToggleCheckBox.addEventListener("change", function () {
-
-            for (var i = 0; i < dataNodes.length; i++) {
-
-                var tag = dataNodes[i].getAttribute("tag")
-
-                tag.classList.toggle("hidden");
-            }
-        });
+        node.datum(data).call(summarator);
 
         return model;
     }
 
-    function buildScene(model, domElement) {
-
-        var node = domElement,
-            width = node.clientWidth,
-            height = node.clientHeight;
-
-        var dataNodes = model.getDataNodes().filter(function (dataNode) {
-            return dataNode.isActive;
-        });;
+    function buildScene(model) {
        
-        var viewer = new ThreeDxf.Viewer(model.getDXFData(), node, width, height);
+        var viewer = new ThreeDxf.Viewer(
+            model.getDXFData(),
+            sceneFrame,
+            sceneFrame.clientWidth,
+            sceneFrame.clientHeight);
 
         scene = viewer.scene;
         renderer = viewer.renderer;
-        camera = viewer.camera;
-        controls = viewer.controls;
-
-        controls.enableRotate = false;
-        controls.update();
 
         mouse = new THREE.Vector2();
         frustum = new THREE.Frustum();
         projScreenMatrix = new THREE.Matrix4();
 
+        controls = viewer.controls;
+        controls.enableRotate = false;
+        controls.update();
+        controls.addEventListener('change', onCameraChange);
+
+        camera = viewer.camera;
         camera.zoom = 0.004;
         camera.updateProjectionMatrix();
-
-        controls.addEventListener('change', onCameraChange);    
+                   
         window.addEventListener('resize', onWindowResize, false);
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
 
+        var selector = d3.selector(),
+            dataNodes = model.getDataNodes().filter(function (dataNode) {
+            return dataNode.isActive;
+        });
         dataNodes.forEach(function (dataNode, i) {
 
             var point = buildPoint(dataNode);
@@ -353,7 +538,33 @@
             dataNode.setAttribute("point", point);
         });
 
-        document.addEventListener('mousemove', onDocumentMouseMove, false);
+        d3.select(sceneSelector).call(selector);
+
+        selector.on("mouseup", function (sel) {
+
+            if (sel.select === false) return;
+
+            model.getDataNodes().forEach(function (dataNode) {
+
+                var rect = dataNode.getAttribute("tag").getBoundingClientRect();
+
+                if (rect.top - sceneRect.top >= sel.y &&
+                    rect.bottom - sceneRect.top <= sel.y + sel.height &&
+                    rect.left - sceneRect.left >= sel.x &&
+                    rect.right - sceneRect.left <= sel.x + sel.width) {
+
+                    toggleActive(dataNode, true);
+                    toggleSelected(dataNode, true);
+                }
+                else {
+                    toggleActive(dataNode, false);
+                    toggleSelected(dataNode, false);
+                }
+            });
+
+            buildComparisons(model, comparisonsFrame);
+            buildSummary(model, summaryFrame);
+        });
 
         animate();
         onWindowResize();
@@ -362,7 +573,7 @@
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(node.clientWidth, node.clientHeight);
+            renderer.setSize(sceneFrame.clientWidth, sceneFrame.clientHeight);
         }
 
         function onCameraChange() {
@@ -436,38 +647,158 @@
         return model;
     }
 
-    function buildSlider(model) {
+    function buildsliders(model) {
         
-        var dataNodes = model.getDataNodes();
+        var dataNodes = model.getDataNodes(),
+            sliders = [slider0, slider1];
 
-        slider.addEventListener("change", function () {
+        sliders.forEach(function (slider) {
 
-            var value = +this.value;
+            slider.addEventListener("change", function () {
 
-            for (var i = 0; i < dataNodes.length; i++) {
+                var vals = [+slider0.value, +slider1.value],
+                    min = Math.min(vals[0], vals[1]),
+                    max = Math.max(vals[0], vals[1]);
 
-                var comparator = dataNodes[i].getAttribute("comparator"),
-                    point = dataNodes[i].getAttribute("point"),
-                    color = dataNodes[i].getAttribute("colors")[value];
+                for (var i = 0; i < dataNodes.length; i++) {
 
-                comparator.setHighlightedValue(value);
-                point.material.color.set(color);
-            }
+                    var comparator = dataNodes[i].getAttribute("comparator"),
+                        point = dataNodes[i].getAttribute("point"),
+                        color = dataNodes[i].getAttribute("colors")[min];
 
-            for (var i = 0; i < comparisonComparators.length; i++) {
+                    comparator.highlighted({ start: min, end: max });
+                    point.material.color.set(color);
+                }
 
-                var comparator = comparisonComparators[i];
-                comparator.setHighlightedValue(value)
-            }
-        })
+                for (var i = 0; i < comparisonsComparators.length; i++) {
 
-        slider.addEventListener("mousemove", function () {
+                    var comparator = comparisonsComparators[i];
+                    comparator.highlighted({ start: min, end: max })
+                }
 
-            time.innerHTML = aviation.core.time.decimalDayToTime(+this.value / 24);
+                buildSummary(model, summaryFrame);
+            })
+
+            slider.addEventListener("mousemove", function () {
+
+                var min = Math.min(+slider0.value, +slider1.value);
+                    max = Math.max(+slider0.value, +slider1.value);
+
+                time.innerHTML = cdr.core.time.decimalDayToTime(min / 24) +
+                    " to " +
+                    cdr.core.time.decimalDayToTime(max / 24)
+            });
         });
 
         return model;
     }
+
+    function buildKeyEvents(model) {
+
+        var settingsTextToggleItem = document.getElementById("text-toggle-info");
+
+        document.addEventListener("keydown", function (e) {
+
+            switch (e.key) {
+
+                case "Shift":
+                    sceneSelector.classList.add("selecting");
+                    shiftDown = true;
+                    break;
+
+                case "Control":
+                    cntrlDown = true;
+                    break;
+
+                case "Escape":
+                    model.getDataNodes().forEach(function (dataNode) {
+
+                        toggleActive(dataNode, true);
+                        toggleSelected(dataNode, true);
+                    })
+                    buildComparisons(model, comparisonsFrame);
+                    buildSummary(model, summaryFrame);
+                    break;
+
+                case "i":
+                    if (cntrlDown) {
+                        cdr.core.event.eventFire(settingsTextToggleItem, "click", false);
+                    }
+                    break;
+
+                case "x":
+                    if (cntrlDown) {
+                        MAXDENSITY = MAXDENSITY === 0.4 ? -1 : 0.4;
+                        buildEvaluations(model, evaluationsFrame);
+                        buildComparisons(model, comparisonsFrame);
+                        buildSummary(model, summaryFrame);
+                    }
+                    break;
+                 
+
+                default: break;
+            }
+        });
+
+        document.addEventListener("keyup", function (e) {
+
+            switch (e.key) {
+
+                case "Shift":
+                    sceneSelector.classList.remove("selecting");
+                    shiftDown = false;
+                    break;
+
+                case "Control":
+                    cntrlDown = false;
+                    break;
+
+                default: break;
+            }
+        });
+    }
+
+    ///
+    /// model helpers
+    /// ------------------------------------------------
+    ///
+
+    function buildTypeData(data, start, end) {
+
+        var typeData = {};
+
+        for (var type in data) {
+
+            var dataFormatted = [];
+
+            for (var scheme in data[type]) {
+
+                dataFormatted.push(Object.keys(data[type][scheme]).map(function (k) {
+
+                    return data[type][scheme][k];
+                }));
+            }
+
+            typeData[type] = dataFormatted.map(function (scheme) {
+
+                if (end === undefined || end === -1) {
+                    
+                    return scheme.slice(start);
+                }
+                else {
+                    return scheme.slice(start, end + 1);
+                }
+                
+            });
+        }
+
+        return typeData;
+    }
+
+    ///
+    /// dataNode helpers
+    /// ------------------------------------------------
+    ///
 
     function buildPoint(dataNode) {
 
@@ -495,7 +826,10 @@
             attr = types["Other"];
         }
 
-        attr.color = dataNode.getAttribute("colors")[+slider.value];
+        ///
+        /// make this the average of the mean
+        ///
+        attr.color = dataNode.getAttribute("colors")[+slider0.value];
 
         var pointGeom = new THREE.Geometry();
         pointGeom.vertices.push(convert(new THREE.Vector3(dataNode._pos.x, dataNode._pos.y, 0)));
@@ -503,78 +837,18 @@
         var point = new THREE.Points(pointGeom, pointMat);
 
         return point;
-    }
 
-    function buildCheckbox(types, property, domElement) {
-
-        var clones = [];
-
-        for (var i = 0; i < types.length; i++) {
-
-            var template = document.querySelector("#filter-types-checkbox-template");
-            var clone = document.importNode(template.content, true);
-
-            var settingsSubItem = clone.querySelector("#filter-types-checkbox-item-"),
-                settingsSubItemInput = clone.querySelector("#filter-types-checkbox-input-"),
-                settingsSubItemInfo = clone.querySelector("#filter-types-checkbox-info-");
-
-            settingsSubItem.id += types[i];
-            settingsSubItemInput.id += types[i];
-            settingsSubItemInfo.id += types[i];
-
-            settingsSubItemInfo.innerHTML = types[i];
-
-            settingsSubItemInfo.addEventListener("click", (function () {
-
-                var item = document.getElementById("filter-types-checkbox-input-" + this);
-
-                item.checked = !item.checked
-                eventFire(item, "change");
-
-            }).bind(types[i]));
-
-            settingsSubItemInput.addEventListener("change", (function (locationType, e) {
-
-                var dataNodes = model.getDataNodes(),
-                    bool = e.srcElement.checked;
-
-                for (var j = 0; j < dataNodes.length; j++) {
-
-                    if (dataNodes[j][property] === locationType) {
-
-                        dataNodes[j].isActive = bool;
-
-                        if (bool) {
-                            dataNodes[j].getAttribute("tag").classList.remove("collapsed");
-                            dataNodes[j]
-                                .getAttribute("comparator")
-                                .div[0][0]
-                                .classList.remove("collapsed");
-                        }
-                        else {
-                            dataNodes[j].getAttribute("tag").classList.add("collapsed");
-                            dataNodes[j]
-                                .getAttribute("comparator")
-                                .div[0][0]
-                                .classList.add("collapsed");
-                        }
-                    }
-                }
-            }).bind(this, types[i]));
-
-            clones.push(clone);
-            domElement.appendChild(clone);
+        function convert(vec) {
+            return new THREE.Vector3(vec.y, -vec.x, vec.z);
         }
-
-        return clones;
     }
 
     function buildTag(dataNode) {
 
         var tag = document.createElement("div");
-        tag.id = getName(dataNode);
+        tag.id = dataNode.getName();
         tag.classList.add("tag");
-        tag.innerText = getName(dataNode);
+        tag.innerText = dataNode.getName();
 
         var data = dataNode.findData();
 
@@ -585,6 +859,8 @@
         var id = dataNode.getAttribute("id"),
             comparator = dataNode.getAttribute("comparator"),
             comparatorDomElement = document.getElementById(id)
+
+        var evals = document.getElementById("evals-title-evaluations");
 
         tag.addEventListener("mouseenter", function () {
 
@@ -607,11 +883,13 @@
 
         tag.addEventListener("click", function () {
 
+            cdr.core.event.eventFire(evals, "click");
+
             info.classList.remove("collapsed");
             comparatorDomElement.scrollIntoView();
 
-            if (comparator.isCollapsed()) {
-                eventFire(comparatorDomElement, "click");
+            if (comparator.collapsed()) {
+                cdr.core.event.eventFire(comparatorDomElement, "click");
             }
 
             drawCornerLines(tag, comparatorDomElement);
@@ -620,7 +898,6 @@
         tag.addEventListener("mouseleave", function () {
 
             info.classList.add("collapsed");
-
             svg.selectAll("*").remove();
         });
 
@@ -631,29 +908,24 @@
             var fromRect = fromElement.getBoundingClientRect(),
                 toRect = toElement.getBoundingClientRect();
 
-            ///
-            /// TODO - this is bad - calculate
-            ///
-            var offset = 8;
-
             var p1 = {
-                y: fromRect.top - offset,
-                x: fromRect.left - offset
+                y: fromRect.top - helperRect.top,
+                x: fromRect.left - helperRect.left
             }
 
             var p2 = {
-                y: toRect.top - offset,
-                x: toRect.left - offset
+                y: toRect.top - helperRect.top,
+                x: toRect.left - helperRect.left
             }
 
             var p3 = {
-                y: fromRect.bottom - offset,
-                x: fromRect.right - offset
+                y: fromRect.bottom - helperRect.top,
+                x: fromRect.right - helperRect.left
             }
 
             var p4 = {
-                y: toRect.bottom - offset,
-                x: toRect.left - offset
+                y: toRect.bottom - helperRect.top,
+                x: toRect.left - helperRect.left
             }
 
             svg.selectAll("*").remove();
@@ -678,217 +950,40 @@
         return tag;
     }
 
-    function getName(dataNode, bool) {
+    function toggleActive(dataNode, active) {
 
-        return dataNode.getName();
-    }
+        var selected = dataNode.isSelected;
+        var checked = !dataNode.getAttribute("input").map(i => i.checked).includes(false);
 
-    function convert(vec) {
+        if ((active && !selected) || (active && !checked)) return dataNode;
 
-        return new THREE.Vector3(vec.y, -vec.x, vec.z);
-    }
+        dataNode.isActive = active;
+        dataNode.getAttribute("point").visible = active;
 
-    ///
-    /// formatting methods
-    /// --------------------------------------------
-    ///
+        if (active) {
+            dataNode.getAttribute("tag").classList.remove("collapsed");
+            dataNode
+                .getAttribute("comparator")
+                .div[0][0]
+                .classList.remove("collapsed");
 
-    function formatToAnalysis(model) {
-
-        var dataTypes = model.getDataNodeNames();
-        var __ = {};
-
-        for (var type in dataTypes) {
-
-            if (dataTypes[type].length > 1) {
-
-                var schemes = {};
-
-                for (var i = 0; i < dataTypes[type].length; i++) {
-
-                    var dataNode = dataTypes[type][i],
-                        data = dataNode.findData();
-
-                    for (var scheme in data) {
-
-                        if (!(scheme in schemes)) {
-
-                            schemes[scheme] = [];
-                        }
-
-                        schemes[scheme].push(data[scheme]);
-                    }
-                }
-
-                for (var scheme in schemes) {
-
-                    var attributes = {};
-
-                    for (var i = 0; i < schemes[scheme].length; i++) {
-
-                        var dimension = +schemes[scheme][i]["Dimension"];
-
-                        for (var attribute in schemes[scheme][i]) {
-
-                            if (aviation.core.time.isTime(attribute)) {
-
-                                if (!(attribute in attributes)) {
-
-                                    attributes[attribute] = [];
-                                }
-
-                                attributes[attribute].push(+schemes[scheme][i][attribute] / dimension);
-                            }
-                        }
-                    }
-
-                    schemes[scheme] = attributes;
-                }
-
-                __[type] = schemes;
-            }
+        }
+        else {
+            dataNode.getAttribute("tag").classList.add("collapsed");
+            dataNode
+                .getAttribute("comparator")
+                .div[0][0]
+                .classList.add("collapsed");
         }
 
-        return __;
+        return dataNode;
     }
 
-    function formatToComparator(obj) {
+    function toggleSelected(dataNode, bool) {
 
-        var __ = {};
+        dataNode.isSelected = bool;
 
-        for (var scheme in obj) {
-
-            __[scheme] = [];
-
-            for (var key in obj[scheme]) {
-
-                if (aviation.core.time.isTime(key)) {
-
-                    var dd = aviation.core.time.timeToDecimalDay(key);
-
-                    __[scheme].push({
-                        x: dd,
-                        y: Number(obj[scheme][key])
-                    });
-                }
-            }
-        }
-
-        return __;
-    }
-
-    function formatToSpiderGraph(obj) {
-
-    }
-
-    ///
-    /// helper mathods
-    /// --------------------------------------------
-    ///
-
-    // http://stackoverflow.com/questions/2705583/how-to-simulate-a-click-with-javascript
-    function eventFire(el, etype) {
-        if (el.fireEvent) {
-            el.fireEvent('on' + etype);
-        } else {
-            var evObj = document.createEvent('Events');
-            evObj.initEvent(etype, true, false);
-            el.dispatchEvent(evObj);
-        }
-    }
-
-    function mode(arr) {
-
-        var __ = {},
-            mode = arr[0];
-
-        arr.forEach(function (i) {
-
-            if (!(i in __)) { __[i] = 0; }
-            __[i]++;
-
-        });
-
-        for (var i in __) {
-            if (__[i] > __[mode]) { mode = i; }
-        }
-
-        return mode;
-    }
-
-    function readFile(file, cb) {
-
-        function readTextFile(file, cb) {
-            var rawFile = new XMLHttpRequest();
-            rawFile.responseType = "blob"
-            rawFile.open("GET", file, true);
-            rawFile.onreadystatechange = function () {
-
-                if (rawFile.readyState === 4) {
-                    if (rawFile.status === 200 || rawFile.status == 0) {
-
-                        var response = rawFile.response;
-
-                        cb(response);
-                    }
-                }
-            }
-            rawFile.send(null);
-        }
-
-        var reader = new FileReader();
-
-        reader.onprogress = updateProgress;
-        reader.onabort = abortUpload;
-        reader.onerror = errorHandler;
-
-        reader.onloadend = function (evt) {
-            cb(onSuccess(evt));
-        };
-
-        readTextFile(file, function (data) {
-            reader.readAsText(data);
-        });
-    }
-
-    function abortUpload() {
-        console.log('Aborted read!')
-    }
-
-    function errorHandler(evt) {
-        switch (evt.target.error.code) {
-            case evt.target.error.NOT_FOUND_ERR:
-                alert('File Not Found!');
-                break;
-            case evt.target.error.NOT_READABLE_ERR:
-                alert('File is not readable');
-                break;
-            case evt.target.error.ABORT_ERR:
-                break; // noop
-            default:
-                alert('An error occurred reading this file.');
-        }
-    }
-
-    function updateProgress(evt) {
-        console.log('progress');
-        console.log(Math.round((evt.loaded / evt.total) * 100));
-    }
-
-    function onSuccess(evt) {
-        var fileReader = evt.target;
-        if (fileReader.error) return console.log("error onloadend!?");
-
-        var parser = new window.DxfParser();
-        var dxf = parser.parseSync(fileReader.result);
-
-        return dxf;
-    }
-
-    function handleDragOver(evt) {
-        evt.stopPropagation();
-        evt.preventDefault();
-        evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+        return dataNode;
     }
 
 })()

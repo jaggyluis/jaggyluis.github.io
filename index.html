@@ -7,13 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body oncontextmenu="return false;">
     <div id="helper">
     </div>
     <div id="container-box">
+        <!--
         <div id="navigation-box" class="float-left color-default">
             <div id="navigation-title" class="title">NAVIGATION</div>
         </div>
+            -->
         <div id="scene-box" class="float-left color-default">
             <div id="scene-bar" class="title-bar">
                 <div id="scene-title-bar" class="title float-left">
@@ -23,13 +25,21 @@
                     <div id="scene-settings-box" class="settings-box hidden">
                         <div id="scene-settings-text-toggle" class="settings-item">
                             <input id="text-toggle-input" class="checkbox-input" type="checkbox" checked/>
-                            <div id="text-toggle-info" class="checkbox-info">SHOW TAGS (Ctrl-t)</div>
+                            <div id="text-toggle-info" class="checkbox-info">SHOW TAGS (Ctrl-i)</div>
                         </div>
                     </div>
                 </div>
             </div>
+            <div id="scene-selector"></div>
             <div id="scene-tags"></div>
             <div id="scene-frame"></div>
+            <div id="scene-controls">
+                <div class="controls">CONTROLS:</div>
+                <div class="controls">Ctrl + i : Toggle Tags</div>
+                <div class="controls">Ctrl + x : Normalize Evaluations</div>
+                <div class="controls">Shift + m1 : Select Multiple Nodes</div>
+                <div class="controls">Esc: Clear Selected Nodes</div>
+            </div>
         </div>
         <div id="evals-box" class="float-right color-default">
             <div id="evals-bar" class="title-bar">
@@ -53,8 +63,9 @@
             <div id="comparisons-frame" class="frame collapsed"></div>
             <div id="summary-frame" class="frame collapsed"></div>
             <div id="evals-slider" class="slider-bar">
-                <input id="evals-slider-input" class="slider-input" type="range" min="0" value="12" max="23" step="1" list="evals-slider-settings"/>
-                <div id="evals-time">12:00:00</div>
+                <input id="evals-slider-input-0" class="slider-input" type="range" min="0" multiple value="5" max="23" step="1" list="evals-slider-settings"/>
+                <input id="evals-slider-input-1" class="slider-input" type="range" min="0" multiple value="22" max="23" step="1" list="evals-slider-settings" />
+                <div id="evals-time">05:00:00 to 23:00:00</div>
             </div>
         </div>
     </div>
@@ -68,40 +79,20 @@
 
     </template>
 
-    <script>
-
-        function ticks(element) {
-
-            if ('list' in element && 'min' in element && 'max' in element && 'step' in element) {
-                var datalist = document.createElement('datalist'),
-                minimum = parseInt(element.getAttribute('min')),
-                step = parseInt(element.getAttribute('step')),
-                maximum = parseInt(element.getAttribute('max'));
-                datalist.id = element.getAttribute('list');
-                for (var i = minimum; i < maximum + step; i = i + step) {
-                    datalist.innerHTML += "<option value=" + i + "></option>";
-                }
-                element.parentNode.insertBefore(datalist, element.nextSibling);
-            }
-        }
-        var lists = document.querySelectorAll("input[type=range][list]"),
-        arr = Array.prototype.slice.call(lists);
-        arr.forEach(ticks);
-
-    </script>
-
     <!-- library imports -->
+    <script src="js/lib/jquery.min.js"></script>
+
     <script src="js/lib/d3.v3.min.js"></script>
     <script src="js/lib/d3.comparator.js"></script>
+    <script src="js/lib/d3.summarator.js"></script>
+    <script src="js/lib/d3.selector.js"></script>
 
     <script src="js/lib/three.min.js"></script>
     <script src="js/lib/three.OrbitControls.js"></script>
-
-    <script src="js/lib/jquery.min.js"></script>
-    <script src="js/lib/dxf-parser.js"></script>
+    <script src="js/lib/three-dxf-parser.js"></script>
     <script src="js/lib/three-dxf.js"></script>
 
-    <script src="js/lib/aviation.min.js"></script>
+    <script src="js/lib/cdr.min.js"></script>
 
     <!-- app -->
     <script src="js/model.js"></script>

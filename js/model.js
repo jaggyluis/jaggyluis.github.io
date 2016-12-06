@@ -1,5 +1,4 @@
-﻿/// <reference path="lib/aviation.min.js" />
-
+﻿
 // helper functions ---
 function buildDataNodes() {
 
@@ -64,6 +63,9 @@ function DataNode(point2d, name, locationType) {
     this._attributes = {};
 
     this.isActive = true;
+    this.isSelected = true;
+
+    this.wasActive = true;
 }
 DataNode.prototype = {
 
@@ -122,58 +124,134 @@ DataNode.prototype = {
 
 function Model() {
 
-    this._dataNodes = [];
-    this._dataNodeLocationTypes = {};
-    this._dataNodeNames = {};
-    this._dxf = null;
-}
-Model.prototype = {
+    var _dataNodes = [];
+    var _dataNodeLocationTypes = {};
+    var _dataNodeLocationTypeValues = {};
+    var _dataNodeNames = {};
+    var _dxf = null;
 
-    setDataNodes: function (dataNodes) {
+    this.setDataNodes = function (dataNodes) {
 
-        this._dataNodes = dataNodes;
+        _dataNodes = dataNodes;
 
-        for (var i = 0; i < this._dataNodes.length; i++) {
+        for (var i = 0; i < _dataNodes.length; i++) {
 
-            var dataNode = this._dataNodes[i];
+            var dataNode = _dataNodes[i];
 
-            if (!(dataNode.getLocationType() in this._dataNodeLocationTypes)) {
-                this._dataNodeLocationTypes[dataNode.getLocationType()] = [];
+            if (!(dataNode.getLocationType() in _dataNodeLocationTypes)) {
+                _dataNodeLocationTypes[dataNode.getLocationType()] = [];
             }
 
-            if (!(dataNode.getName() in this._dataNodeNames)) {
-                this._dataNodeNames[dataNode.getName()] = [];
+            if (!(dataNode.getName() in _dataNodeNames)) {
+                _dataNodeNames[dataNode.getName()] = [];
             }
 
-            this._dataNodeLocationTypes[dataNode.getLocationType()].push(dataNode);
-            this._dataNodeNames[dataNode.getName()].push(dataNode);
+            _dataNodeLocationTypes[dataNode.getLocationType()].push(dataNode);
+            _dataNodeNames[dataNode.getName()].push(dataNode);
         }
-    },
+    };
 
-    getDataNodes: function () {
+    this.getDataNodes = function () {
 
-        return this._dataNodes;
-    },
+        return _dataNodes;
+    };
 
-    getDataNodeLocationTypes: function () {
+    this.getDataNodeLocationTypes = function () {
 
-        return this._dataNodeLocationTypes;
-    },
+        return _dataNodeLocationTypes;
+    };
 
-    getDataNodeNames: function () {
+    this.getDataNodeNames = function () {
 
-        return this._dataNodeNames;
-    },
+        return _dataNodeNames;
+    };
 
-    setDXFData: function (dxf) {
+    this.setDXFData = function (dxf) {
 
-        this._dxf = dxf;
-    },
+        _dxf = dxf;
+    };
 
-    getDXFData: function () {
+    this.getDXFData = function () {
 
-        return this._dxf;
+        return _dxf;
+    };
+
+    this.getDataNodeNamesArr = function() {
+
+        var dataTypes = this.getDataNodeNames(),
+            __ = [];
+
+        for (var type in dataTypes) {
+
+            if (dataTypes[type].length > 1) {
+                __.push(type);
+            }
+        }
+
+        return __;
     }
 
+    this.getDataFormatted = function () {
 
+        var dataTypes = this.getDataNodeNames();
+        var __ = {};
+
+        for (var type in dataTypes) {
+
+            if (dataTypes[type].length > 1) {
+
+                var schemes = {};
+
+                for (var i = 0; i < dataTypes[type].length; i++) {
+
+                    var dataNode = dataTypes[type][i],
+                        data = dataNode.findData();
+
+                    if (!dataNode.isActive) continue;
+
+                    for (var scheme in data) {
+
+                        if (!(scheme in schemes)) {
+
+                            schemes[scheme] = [];
+                        }
+
+                        schemes[scheme].push(data[scheme]);
+                    }
+                }
+
+                for (var scheme in schemes) {
+
+                    var attributes = {};
+
+                    for (var i = 0; i < schemes[scheme].length; i++) {
+
+                        var dimension = +schemes[scheme][i]["Dimension"];
+
+                        for (var attribute in schemes[scheme][i]) {
+
+                            if (cdr.core.time.isTime(attribute)) {
+
+                                if (!(attribute in attributes)) {
+
+                                    attributes[attribute] = [];
+                                }
+
+                                attributes[attribute].push(+schemes[scheme][i][attribute] / dimension);
+                            }
+                        }
+                    }
+
+                    schemes[scheme] = attributes;
+                }
+
+                if (Object.keys(schemes).length > 0) {
+
+                    __[type] = schemes;
+                }              
+            }
+        }
+
+        return __;
+    };
 }
