@@ -65,9 +65,16 @@
 
     var MAXDENSITY = -1; // max density
 
-    d3.csv("doc/occupationdata1.csv", function (d1) {
+    var file0 = "doc/occupationdata1.csv",
+        file1 = "doc/occupationdata2.csv"
 
-        d3.csv("doc/occupationdata2.csv", function (d2) {
+    d3.csv(file0, function (d0) {
+
+        document.getElementById("legend0-color").style.backgroundColor = colorScale(null, 0);
+
+        d3.csv(file1, function (d1) {
+
+            document.getElementById("legend1-color").style.backgroundColor = colorScale(null, 1);
 
             cdr.core.file.readFile("doc/spatialstructure.dxf", function (o) {
 
@@ -75,7 +82,7 @@
                 var dxf = parser.parseSync(o);
 
                 model = new Model();
-                model.setDataNodes(buildDataNodes(d1, d2));
+                model.setDataNodes(buildDataNodes(d0, d1));
                 model.setDXFData(dxf);
 
                 init(model);            
@@ -350,7 +357,7 @@
                     margin: { top: 0, right: 5, bottom: 0, left: 5 },
                     color: colorScale,
                     ignore: [],
-                    max: MAXDENSITY,
+                    //max: MAXDENSITY,
                     highlighted: { start: min, end: max }
                 })
                 .collapsed(true)
@@ -413,7 +420,7 @@
                 margin: { top: 0, right: 5, bottom: 0, left: 5 },
                 color: colorScale,
                 ignore: [],
-                max: MAXDENSITY,
+                //max: MAXDENSITY,
                 highlighted: { start: min, end: max }
                 })
                 .collapsed(true);
@@ -729,8 +736,8 @@
                 case "x":
                     if (cntrlDown) {
                         MAXDENSITY = MAXDENSITY === 0.4 ? -1 : 0.4;
-                        buildEvaluations(model, evaluationsFrame);
-                        buildComparisons(model, comparisonsFrame);
+                        //buildEvaluations(model, evaluationsFrame);
+                        //buildComparisons(model, comparisonsFrame);
                         buildSummary(model, summaryFrame);
                     }
                     break;

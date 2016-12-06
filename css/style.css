@@ -134,7 +134,7 @@
 }
 
 .slider-bar {
-    height: 10%;
+    height: 8%;
     margin-top: 6px;
     overflow-y: scroll;
     overflow-x: hidden;
@@ -274,6 +274,23 @@
     font-size: 8px;
     //font-weight: bold;
     padding: 2px;
+}
+
+.legend-box {
+    padding: 4px;
+    height: 20px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border:  1px solid black;
+    float: left;
+    margin-right: 5px;
+}
+
+.legend-input {
+    float: left;
 }
 
 
