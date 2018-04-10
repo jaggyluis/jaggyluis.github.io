@@ -5,31 +5,42 @@ import os
 from PIL import Image  # uses pillow
 from random import randint
 
-def format_path(path) :
-    
+def format_path(path) :   
     return path.replace("\\", "/")
 
 def load_image(path):
-    
-    im = Image.open(path)
+    return Image.open(path)
 
+def compress_image(im, factor) :
+
+    im_size = im.size
+    print im_size
+
+    im = im.resize((im_size[0]/factor,im_size[1]/factor),Image.ANTIALIAS)
+
+    print "--> " , im.size
     return im
     
-    #print im.size   # return value is a tuple, ex.: (1200, 800)
+    #im.save("path\\to\\save\\image_scaled_opt.jpg",optimize=True,quality=95)
 
 def load(path):
 
     data = {}
-    
+     
     with open(path) as data_file:    
         data = json.load(data_file)
     
     return data
 
-def build_project(directory) :
+def build_project(directory, target) :
 
     data = []
     data_items = {};
+
+    data_iteme_sm_dir = target + "\\build\\sm\\";
+    
+    if not os.path.exists(data_iteme_sm_dir):
+        os.makedirs(data_iteme_sm_dir)    
 
     for file_ in os.listdir(directory):
 
@@ -48,27 +59,30 @@ def build_project(directory) :
                 im = load_image(file_path)
                 aspect = float(im.size[0]) / float(im.size[1])
                 size = round(aspect)
+                extension = file_.split(".")[1]
+
+                im_compressed_sm = compress_image(im, 3)
+                im_compressed_sm_path = data_iteme_sm_dir + file_name + "_sm." + extension
+                im_compressed_sm.save(im_compressed_sm_path, optimize=True,quality=95)
+                
 
                 file_data = {
-                    "img" : [format_path(file_path)],
+                    "img_raw" : [format_path(file_path)],
+                    "img_sm" : [format_path(im_compressed_sm_path)],
                     "size" : size,
                     }
 
                 if file_name in data_items :
-
-                    data_items[file_name]["img"] = file_data["img"]
-                    data_items[file_name]["size"] = file_data["size"]
+                    for file_key in file_data[key].keya():
+                        data_items[file_name][file_key] = file_data[file_key]
 
                 else :
-
                     data_items[file_name] = file_data
 
             elif file_.endswith(".txt") :
 
                 file_read = open(file_path);
-
-                text = "<br>".join(file_read.readlines(5)) 
-                
+                text = "<br>".join(file_read.readlines(5))              
                 size = randint(1,3)
 
                 file_data = {
@@ -77,11 +91,9 @@ def build_project(directory) :
                     }
 
                 if file_name in data_items:
-
                     data_items[file_name]["txt"] = file_data["txt"]
 
                 else :
-
                     data_items[file_name] = file_data
 
     for key in data_items.keys():
@@ -106,9 +118,9 @@ def build_dir(directory):
 
         if os.path.isdir(file_path) :
 
-            if file_name == "data" :
+            if file_name == "raw" :
 
-                project_data = build_project(file_path)
+                project_data = build_project(file_path, directory)
 
                 if project_data :
                     datum = project_data

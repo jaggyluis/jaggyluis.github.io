@@ -34,8 +34,8 @@ class Content {
 
         block.classList.add("block-size-" + blockSize);
 
-        if (item.img) {
-          item.img.forEach(src => {
+        if (item.img_sm) {
+          item.img_sm.forEach(src => {
 
             var img = document.createElement("img");
             img.src = src;
