@@ -1,0 +1,64 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Luis Jaggy</title>
+    <link type="text/css" rel="stylesheet" href="app/styles/style.css"/>
+    <script type="text/javascript" src="app/libraries/d3/d3.js"></script>
+    <script type="text/javascript" src="app/libraries/d3/d3.layout.js"></script>
+    <script type="text/javascript" src="app/libraries/jQuery/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="app/libraries/jQuery/masonry.pkgd.min.js"></script>
+    <script type="text/javascript" src="app/libraries/jQuery/imagesloaded.pkgd.min.js"></script>
+    <script type="text/javascript" src="app/libraries/jQuery/jquery.freetile.min.js"></script>
+    <script type="text/javascript" src="app/libraries/jQuery/freewall.js"></script>
+
+    <!-- NOTE - these should be react components -->
+
+    <script type="text/javascript" src="app/utils/utils.js"></script>
+    <script type="text/javascript" src="app/components/Element.js"></script>
+    <script type="text/javascript" src="app/components/Content.js"></script>
+    <script type="text/javascript" src="app/components/Banner.js"></script>
+    <script type="text/javascript" src="app/components/Navigation.js"></script>
+    <script type="text/javascript" src="app/components/Item.js"></script>
+
+  </head>
+  <body>
+
+    <!-- NOTE - this only works without react right now
+
+    <div id="app" />
+    <script src="public/bundle.js" type="text/javascript"></script>
+
+    -->
+    <div id="border"></div>
+    <div id="yellow"></div>
+    <div id="corner">
+      <div id="menu">
+        <div id="home" class="menu-item">
+          <div class="name">L</div>
+          <div  id="luis" class="name name-expand">uis Michel&nbsp</div>
+          <div class="name">J</div>
+          <div  id="jaggy" class="name name-expand">aggy</div>
+        </div>
+        <!-- <div id="back" class="menu-item"><<</div> -->
+        <div id="resume" class="menu-item">resume</div>
+        <div id="linkedin" class="menu-item" onclick="window.open('https://www.linkedin.com/in/jaggyluis/','mywindow');"
+
+          style="
+            cursor: pointer;
+            background-color: white;
+            padding: 0;
+          ">
+
+          <img src="app/images/linkedin.png">
+        </div>
+      </div>
+    </div>
+
+    <div id="slider"></div>
+    <div id="canvas">
+      <div id="top"></div>
+    </div>
+
+    <script type="text/javascript" src="app/App.js"> </script>
+  </body>
+</html>
