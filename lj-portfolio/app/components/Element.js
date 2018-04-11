@@ -16,6 +16,7 @@ class Element {
       self.object = document.createElement("div");    
       self.object.id = self.getName(self.node);
       self.object.classList.add("element");
+      self.object.classList.add("faded");
       self.object.style.zIndex = self.node.index;
       self.node.class.forEach(c => self.object.classList.add(c));  
       
