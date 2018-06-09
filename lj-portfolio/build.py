@@ -111,20 +111,25 @@ def build_dir(directory):
     banner = None
     datum = []
 
+    #iterate through the directory files ---
     for file_ in os.listdir(directory):
 
         file_name = os.path.splitext(file_)[0]
         file_path = os.path.join(directory, file_)
 
+        # if the file is a new directory ---
         if os.path.isdir(file_path) :
 
+            # if the file is a raw project image directory ---
             if file_name == "raw" :
 
+                # build the project ---
                 project_data = build_project(file_path, directory)
 
                 if project_data :
                     datum = project_data
 
+            # if the file is a nested project directory ---
             else :
                 
                 dir_data = build_dir(file_path)
@@ -132,16 +137,21 @@ def build_dir(directory):
                 if dir_data :
                     children.append(dir_data)
 
+        #if the file is not a directory ---
         else :
 
+            #if the file is a project file ---
             if file_name == directory_name :
-            
+
+                #if the file is a project ---
                 if file_.endswith(".json"): 
                     data = load(file_path)
 
+                # if the file is a banner ---
                 if file_.endswith(".jpg") or file_.endswith(".png"):
                     banner = format_path(file_path)                
 
+    #set all outputs ---
     if len(children) :
         data["children"] = children
 

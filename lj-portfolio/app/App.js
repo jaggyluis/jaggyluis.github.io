@@ -51,9 +51,10 @@ class App {
       self.nodes = self.treemap.nodes(self.root);
       self.nodes.forEach(node => {
 
+        node.app = self;
+
         var element = new Element(node);
 
-        node.app = self;
         node.element = element;
 
         self.elements.push(element);
@@ -311,11 +312,21 @@ class App {
     this.xScale.domain([node.x, node.x + node.dx]);
     this.yScale.domain([node.y, node.y + node.dy]);
 
-    this.nodes.forEach(d => {
-          d.y = self.yScale(d.y);
-          d.x = self.xScale(d.x);
-          d.dy = ky * d.dy;
-          d.dx = kx * d.dx;
+    this.nodes.forEach(node => {
+
+          var prev = {
+            x : node.x,
+            y : node.y,
+            dy : node.dy,
+            dx : node.dx
+          }
+
+          node.y = self.yScale(node.y);
+          node.x = self.xScale(node.x);
+          node.dy = ky * node.dy;
+          node.dx = kx * node.dx;
+
+          node.prev = prev;
     });
 
     this.parent = this.node;
