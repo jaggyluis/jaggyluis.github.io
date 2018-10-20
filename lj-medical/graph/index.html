@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+html *
+{
+   color: grey !important;
+   font-family: Arial !important;
+}
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+
+.axis {
+  opacity: 0.5;
+  font: 10px sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.axis .domain {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: .3;
+  stroke-width: 4px;
+  stroke-linecap: round;
+}
+
+.axis .halo {
+  fill: none;
+  stroke: #ddd;
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+
+.slider .handle {
+  fill: #fff;
+  stroke: #000;
+  stroke-opacity: .5;
+  stroke-width: 1.25px;
+  cursor: grab;
+}
+
+label {
+    display: block;
+    padding-left: 20px;
+    font-size: 10px;
+}
+
+input {
+    width: 13px;
+    height: 13px;
+    padding: 0;
+    margin:0;
+    vertical-align: bottom;
+    position: relative;
+    top: -1px;
+    *overflow: hidden;
+    float: left;
+}
+
+.item {
+  height : 20px;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+#selection {
+  position:  absolute;
+  top : 60px;
+  left: 30px;
+}
+
+</style>
+<body>
+
+<div id = "selection"></div>
+
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="js/wrangle.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+
+var color = d3.scale.category20();
+
+var force = d3.layout.force()
+    .charge(-500)
+    //.gravity(0.05)
+    .linkDistance(50)
+    .size([width, height]);
+
+var x = d3.scale.linear()
+    .domain([0, 100])
+    .range([250, 80])
+    .clamp(true);
+
+var brush = d3.svg.brush()
+    .y(x)
+    .extent([0, 0]);
+
+var threshold = 0;
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var links_g = svg.append("g");
+var nodes_g = svg.append("g");
+
+
+svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(" + (width - 20)  + ",0)")
+    .call(d3.svg.axis()
+      .scale(x)
+      .orient("left")
+      .tickFormat(function(d) { return d; })
+      .tickSize(0)
+      .tickPadding(12))
+  .select(".domain")
+  .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    .attr("class", "halo");
+
+var slider = svg.append("g")
+    .attr("class", "slider")
+    .call(brush);
+
+slider.selectAll(".extent,.resize")
+    .remove();
+
+var handle = slider.append("circle")
+    .attr("class", "handle")
+    .attr("transform", "translate(" + (width - 20) + ",0)")
+    .attr("r", 5);
+
+svg.append("text")
+    .attr("x", width - 15)
+    .attr("y", 60)
+    .attr("text-anchor", "end")
+    .attr("font-size", "12px")
+    .style("opacity", 0.5)
+    .text("co-occurence threshold (%)")
+
+wrangle("data/data.csv", function(graph) {
+
+  var selection = [];
+  var skip = [];
+
+  // build checkboxes ---
+  graph.nodes.forEach((node, index) => {
+
+    var box = document.createElement("INPUT");
+    box.setAttribute("type", "checkbox");
+    box.checked = true;
+    box.id = node.id;
+
+    var label = document.createElement("label");
+    label.innerHTML = node.id;
+
+    var item = document.createElement("div");
+    item.appendChild(box);
+    item.appendChild(label);
+    item.classList.add("item");
+
+    document.getElementById("selection").appendChild(item);
+
+    selection.push(box);
+
+    box.addEventListener('change', (event) => {
+      update(threshold);
+    });
+
+  });
+
+  graph.links.forEach((link, index) => {
+
+    link.i = index;
+
+    for (var i = 0; i < graph.nodes.length; i++) {
+
+      var node = graph.nodes[i];
+
+      if (node.id === link.source) {
+
+        link.source = i;
+        link.sourceLabel = node.id;
+
+        continue;
+      }
+
+      if (node.id === link.target) {
+
+        link.target = i;
+        link.targetLabel = node.id;
+
+        continue;
+      }
+
+    }
+  });
+
+  function brushed() {
+
+    var value = brush.extent()[0];
+
+    if (d3.event.sourceEvent) {
+      value = x.invert(d3.mouse(this)[1]);
+      brush.extent([value, value]);
+    }
+    handle.attr("cy", x(value));
+
+    threshold = value;
+
+    if (threshold >=0) {
+
+      update(threshold);
+    }
+
+
+
+  }
+
+  function update(threshold) {
+
+    var thresholded_links = graph.links.filter(function(d){
+
+      var sourceAllowed = false;
+      var targetAllowed = false;
+
+      selection.forEach(box => {
+
+        if (box.checked) {
+
+          if (d.sourceLabel == box.id) {
+            sourceAllowed  = true;
+          }
+
+          if (d.targetLabel == box.id) {
+            targetAllowed  = true;
+          }
+        }
+      });
+
+      return sourceAllowed && targetAllowed && d.value * 100 > threshold;
+
+    });
+
+    var thresholded_nodes = graph.nodes.filter(function(d) {
+
+      var allowed = false;
+
+      selection.forEach(box => {
+
+        if (box.checked && d.id == box.id) {
+
+            allowed  = true;
+        }
+
+        if (!allowed) {
+
+
+        }
+
+        node.forEach(group => {
+
+          group.forEach(item => {
+
+            if (item.id == d.id) {
+
+              if (allowed) {
+
+                item.classList.remove("hidden");
+
+              } else {
+
+                item.classList.add("hidden");
+              }
+
+            }
+
+          });
+
+        })
+
+      });
+
+      return allowed;
+
+    });
+
+    force
+        .nodes(thresholded_nodes)
+        .links(thresholded_links);
+
+    var link = links_g.selectAll(".link")
+        .data(thresholded_links, function(d){ return d.i; });
+
+    link.enter().append("line")
+        .attr("class", "link")
+        .style("stroke-width", function(d) { return d.value * 30; });
+
+    link.exit().remove();
+
+    force.on("tick", function() {
+      link.attr("x1", function(d) { return d.source.x; })
+          .attr("y1", function(d) { return d.source.y; })
+          .attr("x2", function(d) { return d.target.x; })
+          .attr("y2", function(d) { return d.target.y; });
+
+      circles.attr("cx", function(d) { return d.x; })
+          .attr("cy", function(d) { return d.y; })
+          .attr("r", function(d) { return (d.count / graph.links.length) + 1; });
+
+      labels.attr("x", function(d) { return d.x; })
+          .attr("y", function(d) { return d.y; });
+
+    });
+
+    force.start();
+  }
+
+  force
+      .nodes(graph.nodes);
+
+  var node = nodes_g.selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("g")
+      .attr("id", function(d) {return d.id;})
+      .call(force.drag);
+
+  var circles = node.append("circle")
+      .attr("class", "node")
+      .attr("r", function(d) { return (d.count / graph.links.length) + 1; })
+      .style("fill", function(d) { return color(d.group); })
+      .attr("r", 4.5);
+
+  var labels = node.append("text")
+      .attr("dx", 12)
+      .attr("dy", ".35em")
+      .text(function(d) { return d.id });
+
+  brush.on("brush", brushed);
+
+  slider
+    .call(brush.extent([100, 100]))
+    .call(brush.event);
+
+});
+
+</script>
