@@ -10,12 +10,20 @@ html *
 
 .node {
   stroke: #fff;
-  stroke-width: 1.5px;
+  stroke-width: 3px;
 }
 
 .link {
-  stroke: #999;
-  stroke-opacity: .6;
+  /* stroke: #999;*/
+  stroke: black;
+  stroke-opacity: 0.6;
+}
+
+
+path.link, path.textpath {
+    fill: none;
+    stroke: #cccccc;
+    stroke-width: 0.5px;
 }
 
 text {
@@ -29,6 +37,7 @@ text {
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
+
 }
 
 .axis .domain {
@@ -92,18 +101,46 @@ input {
 <div id = "selection"></div>
 
 <script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="js\d3\d3-ForceEdgeBundling.js"></script>
 <script src="js/wrangle.js"></script>
 <script>
 
-var width = 960,
-    height = 500;
+var w = window.innerWidth - 20;
+var h = window.innerHeight - 20;
 
-var color = d3.scale.category20();
+var width = w ; //960,
+    height = h ;//500;
+
+var min_zoom = 0.1;
+var max_zoom = 7;
+
+var zoom = d3.behavior.zoom().scaleExtent([min_zoom,max_zoom])
+
+//var color = d3.scale.category20();
+var color = function(d) {
+  return "black";
+}
+
+// var force = d3.layout.force()
+//     .charge(-1000)
+//     //.gravity(0.05)
+//     .friction(0.5)
+//     //.linkDistance(200)
+//     .linkDistance(function(d) {
+//
+//       return 50 + ((1- d.value) * 300);
+//     })
+//     .size([width, height]);
 
 var force = d3.layout.force()
-    .charge(-500)
+    .charge(-1000)
     //.gravity(0.05)
-    .linkDistance(200)
+    .friction(0.5)
+    //.linkDistance(200)
+    .linkDistance(function(d) {
+
+      return 100 + ((1- d.value) * 500);
+    })
     .size([width, height]);
 
 var x = d3.scale.linear()
@@ -123,7 +160,7 @@ var svg = d3.select("body").append("svg")
 
 var links_g = svg.append("g");
 var nodes_g = svg.append("g");
-
+var bundles_g = svg.append("g");
 
 svg.append("g")
     .attr("class", "x axis")
@@ -145,6 +182,12 @@ var slider = svg.append("g")
 slider.selectAll(".extent,.resize")
     .remove();
 
+slider.on("mousedown", function(d) {
+
+  d3.event.stopPropagation();
+
+});
+
 var handle = slider.append("circle")
     .attr("class", "handle")
     .attr("transform", "translate(" + (width - 20) + ",0)")
@@ -159,6 +202,7 @@ svg.append("text")
     .text("co-occurence threshold (%)")
 
 wrangle("data/data.csv", function(graph) {
+//wrangleInverse("data/data.csv", function(graph) {
 
   var selection = [];
   var skip = [];
@@ -201,6 +245,7 @@ wrangle("data/data.csv", function(graph) {
 
         link.source = i;
         link.sourceLabel = node.id;
+        link.sourceIndex = i;
 
         continue;
       }
@@ -209,12 +254,70 @@ wrangle("data/data.csv", function(graph) {
 
         link.target = i;
         link.targetLabel = node.id;
+        link.targetIndex = i;
 
         continue;
       }
 
     }
   });
+
+  var links = graph.links;
+  var nodes = graph.nodes;
+
+  var findNode = function (nodeId) {
+      for (var i in nodes) {
+          if (nodes[i].id === nodeId) {
+            return nodes[i];
+          }
+      };
+  };
+
+  var countSiblingLinks = function(source, target) {
+      var count = 0;
+      for(var i = 0; i < links.length; ++i){
+          if( (links[i].source.id == source.id && links[i].target.id == target.id) || (links[i].source.id == target.id && links[i].target.id == source.id) )
+              count++;
+      };
+      return count;
+  };
+
+  var getSiblingLinks = function(source, target) {
+      var siblings = [];
+      for(var i = 0; i < links.length; ++i){
+          if( (links[i].source.id == source.id && links[i].target.id == target.id) || (links[i].source.id == target.id && links[i].target.id == source.id) )
+              siblings.push(links[i].value);
+      };
+      return siblings;
+  };
+
+  function arcPath(leftHand, d) {
+    var x1 = leftHand ? d.source.x : d.target.x,
+        y1 = leftHand ? d.source.y : d.target.y,
+        x2 = leftHand ? d.target.x : d.source.x,
+        y2 = leftHand ? d.target.y : d.source.y,
+        dx = x2 - x1,
+        dy = y2 - y1,
+        dr = Math.sqrt(dx * dx + dy * dy),
+        drx = dr,
+        dry = dr,
+        sweep = leftHand ? 0 : 1;
+        siblingCount = countSiblingLinks(d.source, d.target)
+        xRotation = 0,
+        largeArc = 0;
+
+        if (siblingCount > 1) {
+            var siblings = getSiblingLinks(d.source, d.target);
+            console.log(siblings);
+            var arcScale = d3.scale.ordinal()
+                                    .domain(siblings)
+                                    .rangePoints([1, siblingCount]);
+            drx = drx/(1 + (1/siblingCount) * (arcScale(d.value) - 1));
+            dry = dry/(1 + (1/siblingCount) * (arcScale(d.value) - 1));
+        }
+
+    return "M" + x1 + "," + y1 + "A" + drx + ", " + dry + " " + xRotation + ", " + largeArc + ", " + sweep + " " + x2 + "," + y2;
+  }
 
   function brushed() {
 
@@ -226,11 +329,14 @@ wrangle("data/data.csv", function(graph) {
     }
     handle.attr("cy", x(value));
 
+    if (value <= 0) {
+      value = 1;
+    }
+
     threshold = value;
 
-    if (threshold > 0) {
-      update(threshold);
-    }
+    update(threshold);
+
   }
 
   function fadeIn(link, thresholded_nodes, thresholded_links) {
@@ -246,7 +352,7 @@ wrangle("data/data.csv", function(graph) {
         return thisOpacity;
       });
 
-      link.style('stroke-opacity', o => (o.source === d || o.target === d ? 1 : 0.1));
+      link.style('stroke-opacity', o => (o.source === d || o.target === d ? 1 : 0.05));
 
     };
   }
@@ -335,20 +441,19 @@ wrangle("data/data.csv", function(graph) {
 
     });
 
-    force
-        .nodes(thresholded_nodes)
-        .links(thresholded_links);
+    force.nodes(thresholded_nodes).links(thresholded_links);
 
     var link = links_g.selectAll(".link")
         .data(thresholded_links, function(d){ return d.i; });
 
     link.enter().append("line")
         .attr("class", "link")
-        .style("stroke-width", function(d) { return d.value * 30; });
+        .style("stroke-width", function(d) { return d.value *30; });
 
     link.exit().remove();
 
     force.on("tick", function() {
+
       link.attr("x1", function(d) { return d.source.x; })
           .attr("y1", function(d) { return d.source.y; })
           .attr("x2", function(d) { return d.target.x; })
@@ -356,22 +461,100 @@ wrangle("data/data.csv", function(graph) {
 
       circles.attr("cx", function(d) { return d.x; })
           .attr("cy", function(d) { return d.y; })
-          .attr("r", function(d) { return (d.count / graph.links.length) + 1; });
+          .attr("r", function(d) { return 3  + (d.personCount / thresholded_nodes.length); });
 
       labels.attr("x", function(d) { return d.x; })
           .attr("y", function(d) { return d.y; });
 
-    nodes_g.selectAll(".node")
-      .on('mouseover.fade', fadeIn(link, thresholded_nodes, thresholded_links))
-      .on('mouseout.fade', fadeOut(link, thresholded_nodes, thresholded_links));
+      nodes_g.selectAll(".node")
+        .on('mouseover.fade', fadeIn(link, thresholded_nodes, thresholded_links))
+        .on('mouseout.fade', fadeOut(link, thresholded_nodes, thresholded_links));
+
+      nodes_g.selectAll(".node-label")
+        .on('mouseover.fade', fadeIn(link, thresholded_nodes, thresholded_links))
+        .on('mouseout.fade', fadeOut(link, thresholded_nodes, thresholded_links));
+
+      //force edge bundling links  ---
+
+      // var eedges = {};
+      // var nnodes = {};
+      // var min_x = Number.MAX_VALUE;
+      // var max_x = 0;
+      // var min_y = Number.MAX_VALUE;
+      // var max_y = 0;
+      //
+      // for(var i = 0; i < thresholded_nodes.length; i++){
+      //
+      //   var key =i;
+      //   var x   = Math.abs(parseFloat(thresholded_nodes[i].x));
+      //   var name = thresholded_nodes[i].id;
+      //   var y   = Math.abs(parseFloat(thresholded_nodes[i].y));
+      //
+      //   nnodes[key] = {'x':x, 'y':y};
+      //   eedges[key] = [];
+      //
+      //   min_x = Math.min(min_x, x);
+      //   max_x = Math.max(max_x, x);
+      //   min_y = Math.min(min_y, y);
+      //   max_y = Math.max(max_y, y);
+      //
+      //
+      // }
+      //
+      // for(var i = 0; i < thresholded_links.length; i++){
+      //
+      //   for (var j = 0; j<thresholded_links[i].value; j++) {
+      //
+      //     eedges[thresholded_links[i].sourceIndex].push({
+      //         'source':thresholded_links[i].sourceIndex,
+      //         'target':thresholded_links[i].targetIndex,
+      //         'value': thresholded_links[i].value
+      //       });
+      //   }
+      //
+      //
+      // }
+      //
+      // bundles_g.selectAll("*").remove();
+      //
+      // Object.keys(eedges).forEach(key => {
+      //
+      //   var fbundling = d3.ForceEdgeBundling().nodes(nnodes).edges(eedges[key]).compatbility_threshold(0.1).step_size(0.2);
+      //   var results   = fbundling();
+      //
+      //   //https://bl.ocks.org/emmasaunders/f7178ed715a601c5b2c458a2c7093f78
+      //   var interpolateTypes = ['linear','step-before','step-after','basis','basis-open','basis-closed','bundle','cardinal','cardinal-open','cardinal-closed','monotone'];
+      //
+      //   var d3line = d3.svg.line()
+      //                     .x(function(d){return d.x;})
+      //                     .y(function(d){return d.y;})
+      //                     .interpolate("linear");
+      //
+      //
+      //
+      //     //plot the data
+      //     for(var i = 0; i < results.length; i++){
+      //       bundles_g.append("path").attr("d", d3line(results[i]))
+      //           .style("stroke-width",  function(d) { return 0.5; })
+      //           .style("stroke", "grey")
+      //           .style("fill", "none")
+      //           .style('stroke-opacity',0.6);
+      //     }
+      // })
 
     });
+
+    zoom.on("zoom", function() {
+
+      nodes_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+      links_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+      bundles_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+  });
 
     force.start();
   }
 
-  force
-      .nodes(graph.nodes);
+  force.nodes(graph.nodes);
 
   var node = nodes_g.selectAll(".node")
       .data(graph.nodes)
@@ -379,13 +562,18 @@ wrangle("data/data.csv", function(graph) {
       .attr("id", function(d) {return d.id;})
       .call(force.drag);
 
+  node.on("mousedown", function(d) {
+    d3.event.stopPropagation();
+
+  });
+
   var circles = node.append("circle")
       .attr("class", "node")
-      .attr("r", function(d) { return (d.count / graph.links.length) + 1; })
-      .style("fill", function(d) { return color(d.group); })
-      .attr("r", 4.5); // here ---
+      .attr("r", function(d) { return 3 + (d.personCount / graph.nodes.length); })
+      .style("fill", function(d) { return color(d.group); });
 
   var labels = node.append("text")
+      .attr("class", "node-label")
       .attr("dx", 12)
       .attr("dy", ".35em")
       .text(function(d) { return d.id });
@@ -395,6 +583,8 @@ wrangle("data/data.csv", function(graph) {
   slider
     .call(brush.extent([100, 100]))
     .call(brush.event);
+
+  svg.call(zoom);
 
 });
 

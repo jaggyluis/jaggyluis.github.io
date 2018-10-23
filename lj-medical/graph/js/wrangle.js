@@ -1,4 +1,20 @@
 
+function wrangleInverse(csv, cb) {
+
+  d3.csv(csv, function(data) {
+
+    var raw = data;
+
+    var persons = toPersons(raw);
+
+    console.log(persons);
+
+    var wrangled = toInverseGraph(persons, data);
+
+    cb(wrangled);
+
+  });
+}
 
 function wrangle(csv, cb) {
 
@@ -15,6 +31,74 @@ function wrangle(csv, cb) {
     cb(wrangled);
 
   });
+}
+
+function toInverseGraph(persons, data)  {
+
+  var graph = {
+
+    nodes : [],
+    links : []
+
+  }
+
+  Object.keys(persons).forEach(person => {
+
+    var node = {
+      id : persons[person]["ID"],
+      group : 1,
+      data : persons[person],
+      count : 1
+    }
+
+    graph.nodes.push(node);
+
+    Object.keys(persons).forEach(other => {
+
+      var link = {
+
+        source : persons[person]["ID"],
+        target : persons[other]["ID"],
+        value :  0
+
+      }
+
+      Object.keys (link.source).forEach(medication => {
+
+        if (link.source[medication] == 1 && link.target[medication] == 1) {
+
+          link.value += 1;
+        }
+
+      })
+
+      if (link.value == 0) {
+
+        return;
+      }
+
+      var exists = false;
+
+      graph.links.forEach(existing => {
+
+        if ((link.source === existing.source && link.target === existing.target) || (link.target === existing.source && link.source === existing.target)) {
+
+          exists = true;
+        }
+
+      });
+
+      if (!exists) {
+
+        graph.links.push(link);
+
+      }
+
+    })
+
+  })
+
+  return graph;
 }
 
 function toGraph(medications, data) {
@@ -40,7 +124,8 @@ function toGraph(medications, data) {
       linkCount += node.data.links[link];
     });
 
-    node.count = linkCount;
+    node.linkCount = linkCount;
+    node.personCount = medications[med].persons.length;
 
     graph.nodes.push(node);
 
@@ -76,6 +161,23 @@ function toGraph(medications, data) {
   });
 
   return graph;
+}
+
+function toPersons(data) {
+
+  var persons = {};
+
+  data.forEach((d, i)=> {
+
+    var person = toBoolean(d);
+
+    person.index = i;
+
+    persons[i] = person;
+
+  });
+
+  return persons;
 }
 
 function toMedication(data) {
