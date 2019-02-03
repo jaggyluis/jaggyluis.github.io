@@ -299,13 +299,19 @@ function buildLayer(data, wrangled, property, properties, label) {
 
   propertyLabel.addEventListener("click", (e) => {
 
-    // properties.forEach(o => {
-    //    map.setLayoutProperty(o, 'visibility', 'none');
-    // });
-    //
-    // map.setLayoutProperty(property, 'visibility', 'visible');
-
     console.log(property);
+
+    properties.forEach(p => {
+
+      var pDiv = document.getElementById(label + "-" + p);
+
+      if (pDiv !== undefined) {
+        pDiv.classList.remove("selected");
+      }
+
+    });
+
+    propertyDiv.classList.add("selected");
 
     data.features.forEach(feature => {
         feature.properties.ssvalue = ((feature.properties[property] - propertyInterval[0] ) / propertyRange) * 1000;
