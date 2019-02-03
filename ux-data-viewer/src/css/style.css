@@ -58,6 +58,10 @@ html, body {
   display: flex;
 }
 
+.document-item.selected {
+  background-color: grey;
+}
+
 .document-item-label {
   width: 500px;
   overflow: hidden;
