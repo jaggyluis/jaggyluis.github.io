@@ -1,20 +1,4 @@
 
-function wrangleInverse(csv, cb) {
-
-  d3.csv(csv, function(data) {
-
-    var raw = data;
-
-    var persons = toPersons(raw);
-
-    console.log(persons);
-
-    var wrangled = toInverseGraph(persons, data);
-
-    cb(wrangled);
-
-  });
-}
 
 function wrangle(csv, cb) {
 
@@ -23,10 +7,15 @@ function wrangle(csv, cb) {
     var raw = data;
 
     var medications = toMedication(raw);
+    var persons = toPersons(raw);
 
     console.log(medications);
+    //console.log(persons);
 
     var wrangled = toGraph(medications, data);
+    var inverse = toInverseGraph(persons, data);
+
+    wrangled.inverse = inverse;
 
     cb(wrangled);
 

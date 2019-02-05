@@ -95,13 +95,64 @@ input {
   left: 30px;
 }
 
+#patients {
+  position: absolute;
+  top: 70%;
+  left:  30px;
+  width: 95%;
+  height: 25%;
+  overflow-y: scroll;
+  overflow-x: scroll;
+  //z-index: -1;
+}
+
+/* data table styles */
+
+#grid {
+	height: 198px;
+}
+
+.row, .header {
+	clear: both;
+	overflow: hidden;
+	font-size: 12px;
+	border-bottom: 1px solid lightgrey;
+	width : 3000px;
+}
+
+.row:hover {
+	background-color: lightgrey;
+}
+
+.header {
+	font-weight: bold;
+}
+
+.cell {
+	float: left;
+	white-space: nowrap;
+	width: 150px;
+	border-left: 1px solid lightgrey;
+	//background-color: white;
+}
+
+.cell:hover {
+	background-color: lightgrey;
+}
+
+.col-0 {
+	//width: 150px;
+}
+
 </style>
 <body>
 
 <div id = "selection"></div>
+<div id="patients" class="table"></div>
 
 <script src="https://d3js.org/d3.v3.min.js"></script>
 <script src="js\d3\d3-ForceEdgeBundling.js"></script>
+<script src="js/d3/d3.divgrid.js"></script>
 <script src="js/wrangle.js"></script>
 <script>
 
@@ -162,6 +213,8 @@ var links_g = svg.append("g");
 var nodes_g = svg.append("g");
 var bundles_g = svg.append("g");
 
+var grid = d3.divgrid();
+
 svg.append("g")
     .attr("class", "x axis")
     .attr("transform", "translate(" + (width - 20)  + ",0)")
@@ -202,10 +255,11 @@ svg.append("text")
     .text("co-occurence threshold (%)")
 
 wrangle("data/data.csv", function(graph) {
-//wrangleInverse("data/data.csv", function(graph) {
 
   var selection = [];
   var skip = [];
+
+  console.log(graph);
 
   // build checkboxes ---
   graph.nodes.forEach((node, index) => {
@@ -352,6 +406,12 @@ wrangle("data/data.csv", function(graph) {
         return thisOpacity;
       });
 
+      // link.style('stroke-opacity', function (o) {
+      //
+      //   const thisOpacity = (o.source === d || o.target === d ? 1 : 0.05;
+      //
+      // });
+
       link.style('stroke-opacity', o => (o.source === d || o.target === d ? 1 : 0.05));
 
     };
@@ -474,84 +534,49 @@ wrangle("data/data.csv", function(graph) {
         .on('mouseover.fade', fadeIn(link, thresholded_nodes, thresholded_links))
         .on('mouseout.fade', fadeOut(link, thresholded_nodes, thresholded_links));
 
-      //force edge bundling links  ---
-
-      // var eedges = {};
-      // var nnodes = {};
-      // var min_x = Number.MAX_VALUE;
-      // var max_x = 0;
-      // var min_y = Number.MAX_VALUE;
-      // var max_y = 0;
-      //
-      // for(var i = 0; i < thresholded_nodes.length; i++){
-      //
-      //   var key =i;
-      //   var x   = Math.abs(parseFloat(thresholded_nodes[i].x));
-      //   var name = thresholded_nodes[i].id;
-      //   var y   = Math.abs(parseFloat(thresholded_nodes[i].y));
-      //
-      //   nnodes[key] = {'x':x, 'y':y};
-      //   eedges[key] = [];
-      //
-      //   min_x = Math.min(min_x, x);
-      //   max_x = Math.max(max_x, x);
-      //   min_y = Math.min(min_y, y);
-      //   max_y = Math.max(max_y, y);
-      //
-      //
-      // }
-      //
-      // for(var i = 0; i < thresholded_links.length; i++){
-      //
-      //   for (var j = 0; j<thresholded_links[i].value; j++) {
-      //
-      //     eedges[thresholded_links[i].sourceIndex].push({
-      //         'source':thresholded_links[i].sourceIndex,
-      //         'target':thresholded_links[i].targetIndex,
-      //         'value': thresholded_links[i].value
-      //       });
-      //   }
-      //
-      //
-      // }
-      //
-      // bundles_g.selectAll("*").remove();
-      //
-      // Object.keys(eedges).forEach(key => {
-      //
-      //   var fbundling = d3.ForceEdgeBundling().nodes(nnodes).edges(eedges[key]).compatbility_threshold(0.1).step_size(0.2);
-      //   var results   = fbundling();
-      //
-      //   //https://bl.ocks.org/emmasaunders/f7178ed715a601c5b2c458a2c7093f78
-      //   var interpolateTypes = ['linear','step-before','step-after','basis','basis-open','basis-closed','bundle','cardinal','cardinal-open','cardinal-closed','monotone'];
-      //
-      //   var d3line = d3.svg.line()
-      //                     .x(function(d){return d.x;})
-      //                     .y(function(d){return d.y;})
-      //                     .interpolate("linear");
-      //
-      //
-      //
-      //     //plot the data
-      //     for(var i = 0; i < results.length; i++){
-      //       bundles_g.append("path").attr("d", d3line(results[i]))
-      //           .style("stroke-width",  function(d) { return 0.5; })
-      //           .style("stroke", "grey")
-      //           .style("fill", "none")
-      //           .style('stroke-opacity',0.6);
-      //     }
-      // })
-
     });
 
     zoom.on("zoom", function() {
 
-      nodes_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-      links_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-      bundles_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-  });
+        nodes_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+        links_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+        bundles_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+    });
 
     force.start();
+
+    var patients = graph.inverse.nodes.map(function(d) {return d.data; }).filter(function(d) {
+
+      for (var i = 0; i< thresholded_links.length; i++) {
+
+        var sourceOK = false;
+        var targetOK = false;
+
+        for (var j = 0; j< thresholded_nodes.length; j++) {
+
+          if (thresholded_links[i].sourceLabel === thresholded_nodes[j].id) {
+            sourceOK = true;
+          }
+
+          if (thresholded_links[i].targetLabel === thresholded_nodes[j].id) {
+            targetOK = true;
+          }
+
+        }
+
+        if (sourceOK && targetOK && d[thresholded_links[i].sourceLabel] === 1 && d[thresholded_links[i].targetLabel] === 1) {
+          return true;
+        }
+
+      }
+
+      return false;
+
+    });
+
+    d3.select("#patients")
+      .datum(patients)
+      .call(grid)
   }
 
   force.nodes(graph.nodes);
@@ -585,6 +610,19 @@ wrangle("data/data.csv", function(graph) {
     .call(brush.event);
 
   svg.call(zoom);
+
+
+
+  // parcoords.on("brush", function(d) {
+  //   d3.select("#passenger-profile-table")
+  //     .datum(d.slice()) // (0,10) before
+  //     .call(grid)
+  //     .selectAll(".row")
+  //     .on({
+  //         "mouseover": function(d) { parcoords.highlight([d]); },
+  //         "mouseout": parcoords.unhighlight
+  //     });
+  // });
 
 });
 

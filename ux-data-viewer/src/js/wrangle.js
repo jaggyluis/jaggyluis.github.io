@@ -2,8 +2,10 @@
 function wrangle(data) {
 
   var wrangled = {
-    data : [],
-    properties : []
+    data : data,
+    properties : [],
+    values : [],
+    types : [],
   }
 
   if (data.type === 'FeatureCollection') {
@@ -11,13 +13,29 @@ function wrangle(data) {
     var features = data.features;
     var properties = {}
 
-    features.forEach(f => {
+    features.forEach((f, i) => {
 
-      Object.keys (f.properties).forEach(k => {
+      var type = f.geometry.type;
+
+      if (!(wrangled.types.includes(type))) {
+        wrangled.types.push(type);
+      }
+
+      if (!("_id" in f.properties)) {
+        f.properties["_id"] = i;
+      }
+
+      f.properties['test'] = Math.random(); // NOTE - for unit testing on all types ---
+
+      Object.keys(f.properties).forEach(k => {
 
         if (k[0] === "_") {
 
           return;
+        }
+
+        if (f.properties[k] === null || f.properties[k] === undefined) {
+          f.properties[k] = 0;
         }
 
         var value = f.properties[k];
@@ -39,7 +57,19 @@ function wrangle(data) {
 
       });
 
-      wrangled.data.push(f.properties);
+      wrangled.values.push(f.properties);
+    });
+
+    Object.keys(properties).forEach(p => {
+
+      if (properties[p][0] === null || properties[p][0] === undefined) {
+        properties[p][0] = 0;
+      }
+
+      if (properties[p][1] === null || properties[p][1] === undefined) {
+        properties[p][1] = 0;
+      }
+
     });
 
     wrangled.properties = properties;
