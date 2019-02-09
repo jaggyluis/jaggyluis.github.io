@@ -4,6 +4,12 @@ html, body {
   height: 100%;
   margin: 0;
   font-family: Helvetica, Arial, sans-serif;
+  white-space: nowrap;
+  background-color: black;
+}
+
+.mapboxgl-control-container {
+  visibility: none;
 }
 
 #map {
@@ -12,27 +18,41 @@ html, body {
   height: 100%;
 }
 
-#left {
+#interface {
   position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
   z-index: 2;
+}
+
+#left {
   width: 20%;
   height: 70%;
-  background-color: rgba(0, 0, 0, 0.3);
+  min-width: 10%;
+  min-height: 10%;
+  max-width: 90%;
+  max-height: 90%;
+  background-color: rgba(0, 0, 0, 0.5);
   border-right: 1px solid white;
-  //overflow-y: scroll;
-  //overflow-x: hidden;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  resize: both;
+  pointer-events: all;
+  cursor: default;
 }
 
 #bottom {
-  position: fixed;
-  z-index: 2;
   width: 100%;
-  bottom: 0;
   height: 30%;
-  background-color: rgba(0, 0, 0, 0.3);
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   border-top: 1px solid white;
   overflow-y: scroll;
   overflow-x: hidden;
+  pointer-events: all;
 }
 
 .box {
@@ -41,15 +61,33 @@ html, body {
   //position: absolute;
 }
 
+.box-label {
+    font-size: 12px;
+    margin-top: 10px;
+    margin-left: 10px;
+    padding: 5px;
+}
+
+.box-item {
+  height: 200px;
+  width: 100%;
+  position: relative;
+}
+
 .document {
   color: white;
 }
 
 .document-label {
-  font-size: 12px;
-  padding-top: 10px;
-  padding-left: 10px;
-  padding-bottom: 5px;
+    font-size: 12px;
+    margin-top: 10px;
+    margin-left: 10px;
+    padding: 5px;
+}
+
+.document-label:hover {
+  background-color: rgba(255,255,255,0.1);
+  -webkit-box-shadow: inset 0 0 6px rgba(255,255,255,0.3);
 }
 
 .document-content {
@@ -63,17 +101,14 @@ html, body {
   display: flex;
 }
 
-.document-item.selected {
-  background-color: grey;
-  border-left: 1px solid white;
-  border-top: 1px solid white;
-  border-bottom: 1px solid white;
-  padding: 4px;
-}
-
 .document-item-label {
   width: 500px;
   overflow: hidden;
+  color: grey;
+}
+
+.document-item-label.selected {
+  color: white;
 }
 
 /* slider */
@@ -136,6 +171,11 @@ html, body {
 .dimension text {
   fill : white;
   font: 10px Arial;
+  pointer-events: all;;
+}
+
+.dimension text.label {
+  fill : grey;
 }
 
 .dimension rect {
@@ -150,10 +190,46 @@ html, body {
 
 .dimension path {
   stroke : white;
+  fill: transparent;
 }
 
 .foreground {
   opacity : 0.2;
+}
+
+.label.selected {
+  font-weight: bolder;
+  fill: white !important;
+}
+
+.label:hover {
+  font-weight: bold;
+  cursor: default;
+  fill: white !important;
+}
+
+/* scrollbar */
+
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(255,255,255,0.3);
+    border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 0px;
+    -webkit-box-shadow: inset 0 0 6px rgba(255,255,255,0.5);
+}
+
+/* checkbox */
+
+input[type="checkbox" i] {
+  padding: 0px;
+  margin: 0px;
+  margin-right: 10px;
 }
 
 /* functionality */

@@ -6,6 +6,9 @@ function wrangle(data) {
     properties : [],
     values : [],
     types : [],
+    location : {
+      center : [151.173,  -33.877]
+    }
   }
 
   if (data.type === 'FeatureCollection') {
@@ -29,10 +32,10 @@ function wrangle(data) {
 
       Object.keys(f.properties).forEach(k => {
 
-        if (k[0] === "_") {
-
-          return;
-        }
+        // if (k[0] === "_") {
+        //
+        //   return;
+        // }
 
         if (f.properties[k] === null || f.properties[k] === undefined) {
           f.properties[k] = 0;
@@ -69,6 +72,20 @@ function wrangle(data) {
       if (properties[p][1] === null || properties[p][1] === undefined) {
         properties[p][1] = 0;
       }
+
+      wrangled.values.forEach(v => {
+
+        if (!(p in v)) {
+          v[p] = 0;
+        }
+
+      });
+
+      wrangled.data.features.forEach(f => {
+        if (!(p in f.properties)) {
+          f.properties[p] = 0;
+        }
+      })
 
     });
 

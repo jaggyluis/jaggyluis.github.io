@@ -16,15 +16,32 @@ const map = new mapboxgl.Map({
     zoom: 0.1
 });
 
-const center = (data) => {
-  return {
-    center:[151.173,  -33.877] // TODO: write this bit + zoom ---
-  }
-
-};
-
+const interface = document.getElementById("interface");
 const left = document.getElementById("left");
 const bottom = document.getElementById("bottom");
+const scroll = document.getElementById("bottom-scroll-pane");
+
+const source = {};
+
+var down = false;
+var top = left.clientHeight;
+
+left.addEventListener("mousedown", e=> {
+  down = true;
+});
+
+document.addEventListener("mousemove", e=> {
+  if (down) {
+    bottom.style.height = interface.clientHeight - left.clientHeight + "px";
+  }
+});
+
+document.addEventListener("mouseup", e=> {
+  if (down) {
+    down = false;
+  }
+});
+
 
 run();
 
@@ -81,6 +98,30 @@ function run() {
   }
 }
 
+function createPropertyState(property, wrangled) {
+
+  var propertyDiv = document.createElement("div");
+  var propertyStops = [];
+  var propertyInterval = wrangled.properties[property];
+  var propertyRange = propertyInterval[1] - propertyInterval[0];
+  var propertyStyle = style(property);
+  var propertyStop = propertyStyle.length;
+
+  for (var i = 0; i< propertyStop; i++) {
+    propertyStops.push([propertyInterval[0] + ( i * (propertyRange / propertyStop) ), propertyStyle[i]]);
+  }
+
+  return {
+    propertyDiv : propertyDiv,
+    propertyStops : propertyStops,
+    propertyInterval : propertyInterval,
+    propertyRange : propertyRange,
+    propertyStyle : propertyStyle,
+    propertyStop : propertyStop
+  }
+
+}
+
 function load(data, label) {
 
   console.log(data);
@@ -88,83 +129,61 @@ function load(data, label) {
   var wrangled = wrangle(data);
   var filtered = ['in', '_id'];
 
-  map.fitBounds(geojsonExtent(data));
+  var properties = Object.keys(wrangled.properties);
+  var propertyStates = {};
+
+  properties.sort();
+  properties.forEach(property => {
+    propertyStates[property] = createPropertyState(property, wrangled);
+  });
+
+  source[label] = {
+    data : data,
+    states : propertyStates
+  }
+
+  var base = turf.buffer(wrangled.data.features[0], 10, {units: 'miles'});
+  var bounds = geojsonExtent(base);
+
+  if (Object.keys(source).length === 1) {
+    map.fitBounds(bounds); // NOTE - only center once ---
+  }
 
   map.addSource(label, {
     type: 'geojson',
     data
   });
 
-  // map.addLayer({
-  //     "id": "heat",
-  //     "type": "heatmap",
-  //     "source": label,
-  //     //"filter" : filtered,
-  //     "paint": {
-  //         // Increase the heatmap weight based on frequency and property magnitude
-  //         // "heatmap-weight": [
-  //         //     "interpolate",
-  //         //     ["linear"],
-  //         //     ["get", "test"],
-  //         //     0, 0,
-  //         //     6, 1
-  //         // ],
-  //         // Increase the heatmap color weight weight by zoom level
-  //         // heatmap-intensity is a multiplier on top of heatmap-weight
-  //         // "heatmap-intensity": [
-  //         //     "interpolate",
-  //         //     ["linear"],
-  //         //     ["zoom"],
-  //         //     0, 1,
-  //         //     9, 3
-  //         // ],
-  //         // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
-  //         // Begin color ramp at 0-stop with a 0-transparancy color
-  //         // to create a blur-like effect.
-  //         "heatmap-color": [
-  //             "interpolate",
-  //             ["linear"],
-  //             ["heatmap-density"],
-  //             0, "rgba(33,102,172,0)",
-  //             0.2, "rgb(103,169,207)",
-  //             0.4, "rgb(209,229,240)",
-  //             0.6, "rgb(253,219,199)",
-  //             0.8, "rgb(239,138,98)",
-  //             1, "rgb(178,24,43)"
-  //         ],
-  //         // Adjust the heatmap radius by zoom level
-  //         "heatmap-radius": 10,
-  //         // Transition from heatmap to circle layer by zoom level
-  //         "heatmap-opacity": 0.5
-  //     }
-  // });
+  if (wrangled.types.length > 1) {
+    alert("geojson file contains multiple geometry types, which may produce unwanted results.")
+  }
 
   if (wrangled.types.includes("LineString")) {
 
-    // map.addLayer( {
-    //
-    //     id : label + '-base',
-    //     source : label,
-    //     type: 'line',
-    //     layout : {
-    //         'line-cap': 'round',
-    //         'line-join': 'round',
-    //         //'visibility': 'none', // init with layer off ---
-    //     },
-    //     paint: {
-    //         'line-color' :  {
-    //             property : "_id",
-    //             type: 'interval',
-    //             stops : [[0, "rgba(255,255,255, 0.1)"]],
-    //         },
-    //         'line-width': [
-    //             "interpolate", ["linear"], ["zoom"],
-    //             10, 1,
-    //             20, 6
-    //         ],
-    //     }
-    //
-    // });
+    map.addLayer( {
+
+        id : label + '-base',
+        source : label,
+        type: 'line',
+        layout : {
+            'line-cap': 'round',
+            'line-join': 'round',
+            //'visibility': 'none', // init with layer off ---
+        },
+        paint: {
+            'line-color' :  {
+                property : "_id",
+                type: 'interval',
+                stops : [[0, "rgba(255,255,255, 0.05)"]],
+            },
+            'line-width': [
+                "interpolate", ["linear"], ["zoom"],
+                10, 1,
+                20, 6
+            ],
+        }
+
+    });
 
     map.addLayer( {
 
@@ -187,24 +206,25 @@ function load(data, label) {
               10, 1,
               20, 6
           ],
+          'line-blur': 2
       }
 
     });
 
   } else if (wrangled.types.includes("Polygon")) {
 
-    // map.addLayer( {
-    //
-    //   id : label + '-base',
-    //   source : label,
-    //   type: 'fill',
-    //   paint: {
-    //     'fill-color': "rgba(255,255,255, 0.1)",
-    //     'fill-opacity': 1,
-    //     'fill-outline-color' : "rgba(255,255,255, 0.3)"
-    //   }
-    //
-    // });
+    map.addLayer( {
+
+      id : label + '-base',
+      source : label,
+      type: 'fill',
+      paint: {
+        'fill-color': "rgba(255,255,255, 0.05)",
+        'fill-opacity': 1,
+        'fill-outline-color' : "rgba(255,255,255, 0.1)"
+      }
+
+    });
 
     map.addLayer( {
 
@@ -216,27 +236,120 @@ function load(data, label) {
         'fill-extrusion-color': "#ffffff",
         'fill-extrusion-height': 1,
         'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': 1
+        'fill-extrusion-opacity': 0.8
       }
 
     });
+
+  } else if (wrangled.types.includes("Point")) {
+
+    map.addLayer({
+      id : label + '-base',
+      source : label,
+      "type": "circle",
+      "minzoom": 7,
+      "paint": {
+          // Size circle radius by earthquake magnitude and zoom level
+          "circle-radius": 1,
+          // Color circle by earthquake magnitude
+          "circle-color": "rgba(255,255,255, 0.1)",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1,
+          // Transition from heatmap to circle layer by zoom level
+          "circle-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              7, 0,
+              8, 1
+          ]
+      }
+    });
+
+    map.addLayer({
+      id : label + '-filter',
+      source : label,
+      "type": "heatmap",
+      "paint": {
+        // Increase the heatmap weight based on frequency and property magnitude
+        // "heatmap-weight": [
+        //     "interpolate",
+        //     ["linear"],
+        //     ["get", "test"],
+        //     0, 0,
+        //     6, 1
+        // ],
+        //Increase the heatmap color weight weight by zoom level
+        //heatmap-intensity is a multiplier on top of heatmap-weight
+        "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0, 1,
+            9, 3
+        ],
+        // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+        // Begin color ramp at 0-stop with a 0-transparancy color
+        // to create a blur-like effect.
+        "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(255,255,255,0)",
+            0.2,"rgba(255,255,255,0)",
+            0.4,"rgba(255,255,255,0)",
+            0.6, "rgba(255,255,255,0.5)",
+            0.8, "rgba(255,255,255,1)",
+            1, "rgba(255,255,255,0.5)"
+        ],
+        // Adjust the heatmap radius by zoom level
+        "heatmap-radius": 20,
+        // Transition from heatmap to circle layer by zoom level
+        "heatmap-opacity": 0.5
+      }
+    });
+
+    // point always on top ---
+    map.moveLayer( label + '-base');
+    map.moveLayer( label + '-filter');
 
   }
 
   var box = document.createElement("div");
   box.classList.add("box");
-  bottom.appendChild(box);
+  box.classList.add("document");
+  scroll.appendChild(box);
 
-  var parcoords = d3.parcoords()(box)
+  var boxLabel = document.createElement("div");
+  boxLabel.classList.add("box-label");
+  boxLabel.id = label + "-box";
+  boxLabel.innerHTML = label;
+  box.appendChild(boxLabel);
+
+  var boxItem = document.createElement("div");
+  boxItem.classList.add("box-item");
+  boxItem.id = label + "-box-item";
+  box.appendChild(boxItem);
+
+  var dimensions = [];
+
+  Object.keys(wrangled.properties).forEach(p => {
+
+      if (!(p === "_id")) { // set the baseline parcoords to just be _id ---
+        dimensions.push(p);
+      }
+  });
+
+  var parcoords = d3.parcoords()(boxItem)
       .data(wrangled.values)
-      .hideAxis(["_id"])
+      .hideAxis(dimensions)
       .color(function(d) { return "#ffffff"; })
       .alpha(0.05)
       //.composite("darken")
-      .margin({ top: 50, left: 50 /*200*/, bottom: 60, right: 50 })
+      .margin({ top: 30, left: 50 /*200*/, bottom: 60, right: 50 })
       .mode("queue")
       .brushMode("1D-axes")
-      .reorderable()
+      //.reorderable()
       .on("brushend", function(d) {
 
         var f = ['in', '_id'];
@@ -275,132 +388,162 @@ function load(data, label) {
 
         docContent.classList.remove("collapsed");
         docLabel.innerHTML = " - " + label;
-        //map.setLayoutProperty(label + "-base", 'visibility', 'visible');
+
+        box.classList.remove("collapsed");
+
+        map.setLayoutProperty(label + "-base", 'visibility', 'visible');
         map.setLayoutProperty(label + "-filter", 'visibility', 'visible');
 
       } else {
 
         docContent.classList.add("collapsed");
         docLabel.innerHTML = " + " + label;
-        //map.setLayoutProperty(label + "-base", 'visibility', 'none');
+
+        box.classList.add("collapsed");
+
+        map.setLayoutProperty(label + "-base", 'visibility', 'none');
         map.setLayoutProperty(label + "-filter", 'visibility', 'none');
       }
   });
 
-  var properties = Object.keys(wrangled.properties);
-
   properties.forEach(property => {
 
-    buildProperty(wrangled, property, properties, label, parcoords);
-  });
-}
+    var propertyDiv = document.createElement("div");
+    propertyDiv.id = label + "-" + property;
+    propertyDiv.classList.add("document-item");
 
-// load the data and create  ---
-function buildProperty(wrangled, property, properties, label, parcoords) {
+    var propertyCheckBox = document.createElement("input");
+    propertyCheckBox.setAttribute("type", "checkbox");
 
-  var propertyDiv = document.createElement("div");
-  var propertyStop = 4;
-  var propertyStops = [];
-  var propertyInterval = wrangled.properties[property];
-  var propertyRange = propertyInterval[1] - propertyInterval[0];
-  var propertyColors = [ '#d74518', '#fdae61', '#5cb7cc', '#b7b7b7']
+    var propertyLabel = document.createElement("div");
+    propertyLabel.innerHTML = property;
+    propertyLabel.classList.add("document-item-label");
 
-  for (var i = 0; i< propertyStop; i++) {
-    propertyStops.push([propertyInterval[0] + ( i * (propertyRange / propertyStop) ), propertyColors[i]]);
-  }
+    if (property === "_id") {
+      propertyCheckBox.setAttribute("checked", true);
+      propertyLabel.classList.add("selected");
+    }
 
-  propertyDiv.id = label + "-" + property;
-  propertyDiv.classList.add("document-item");
+    propertyDiv.appendChild(propertyCheckBox);
+    propertyDiv.appendChild(propertyLabel);
+    docContent.appendChild(propertyDiv);
 
-  var propertyCheckBox = document.createElement("input");
-  propertyCheckBox.setAttribute("type", "checkbox");
-  propertyCheckBox.setAttribute("checked", true);
+    propertyCheckBox.addEventListener("click", (e) => {
 
-  var propertyLabel = document.createElement("div");
-  propertyLabel.innerHTML = property;
-  propertyLabel.classList.add("document-item-label");
-
-  propertyDiv.appendChild(propertyLabel);
-
-  var colorFunc = d3.scale.quantile()
-  .domain(propertyInterval)
-  .range(propertyColors);
-
-  document.getElementById(label + "-content").appendChild(propertyDiv);
-
-  propertyLabel.addEventListener("click", (e) => {
-
-    console.log(property);
-
-    properties.forEach(p => {
-
-      if (p === property) {
-
+      if (property === "_id") { // prevent 0 dimension errors ---
+        e.target.checked = true;
         return;
       }
 
-      var pDiv = document.getElementById(label + "-" + p);
+      if (e.target.checked) {
 
-      if (pDiv !== undefined) {
-        pDiv.classList.remove("selected");
+        var index = dimensions.indexOf(property);
+
+        if (index >= 0) {
+          dimensions.splice(index, 1);
+        }
+
+        propertyLabel.classList.add("selected");
+
+      } else {
+
+        dimensions.push(property);
+        propertyLabel.classList.remove("selected");
       }
+
+      map.setFilter(label + '-filter', ["in", "_id"]);
+      parcoords.hideAxis(dimensions).render().updateAxes();
+
+      updateLabels();
+    });
+  });
+
+  function updateLabels() {
+
+    parcoords
+      .color("#ffffff")
+      .alpha(0.05)
+      .render();
+
+    d3.selectAll(".label")[0].forEach(other => {
+
+      other.classList.remove("selected");
 
     });
 
-    if (propertyDiv.classList.contains("selected")) {
+    d3.selectAll(".label")[0].forEach(function(l) {
 
-      parcoords
-        .color(function(d) { return "#ffffff"; })
-        .alpha(0.05)
-        .render();
+        if (l.hasEventListener) {
+          return;
+        }
 
-      propertyDiv.classList.remove("selected");
+        l.hasEventListener = true;
 
-      if (wrangled.types.includes("LineString")) {
+        l.addEventListener("click", function(e) {
 
-        map.setPaintProperty(label + '-filter', 'line-color', {
-          'property' : "_id",
-          'type': 'interval',
-          'stops' : [[0,  "#ffffff"]],
+          var property = l.innerHTML;
+          var propertyState = propertyStates[property];
+
+          console.log(property);
+
+          var _color = "#ffffff";
+          var _property = "_id";
+          var _stops = [[0, "#ffffff"]];
+          var _type = "line-color";
+          var _func = d3.scale.quantile().domain(propertyState.propertyInterval).range(propertyState.propertyStyle);
+
+          d3.selectAll(".label")[0].forEach(other => {
+
+            if (other.innerHTML === property) {
+              return;
+            }
+
+            other.classList.remove("selected");
+
+          });
+
+          if (l.classList.contains("selected")) {
+
+            l.classList.remove("selected");
+
+            // keep all the colors the default ---
+
+          } else {
+
+            l.classList.add("selected");
+
+            _color = function(d) { return _func(d[property]); };
+            _property = property;
+            _stops = propertyState.propertyStops;
+          }
+
+          // geometry type switch ---
+          if (wrangled.types.includes("LineString")) {
+            _type = "line-color";
+
+          } else  if (wrangled.types.includes("Polygon")) {
+            _type = "fill-extrusion-color";
+
+          } else if (wrangled.types.includes("Point")) {
+            _type = null;
+          }
+
+          if (_type === null) {
+            return; //TODO - make the handler for points ---
+          }
+
+          parcoords
+            .color(_color)
+            .alpha(0.05)
+            .render();
+
+          map.setPaintProperty(label + '-filter', _type, {
+            'property' : _property,
+            'type': 'interval',
+            'stops' : _stops,
+          });
+
         });
-
-      } else  if (wrangled.types.includes("Polygon")) {
-
-        map.setPaintProperty(label + '-filter', 'fill-extrusion-color', {
-          'property' : "_id",
-          'type': 'interval',
-          'stops' : [[0,  "#ffffff"]],
-        });
-
-      }
-
-    } else {
-
-      parcoords
-        .color(function(d) { return colorFunc(d[property]); })
-        .alpha(0.05)
-        .render();  // quantitative color scale
-
-      propertyDiv.classList.add("selected");
-
-      if (wrangled.types.includes("LineString")) {
-
-        map.setPaintProperty(label + '-filter', 'line-color', {
-          'property' : property,
-          'type': 'interval',
-          'stops' : propertyStops,
-        });
-
-      } else  if (wrangled.types.includes("Polygon")) {
-
-        map.setPaintProperty(label + '-filter', 'fill-extrusion-color', {
-          'property' : property,
-          'type': 'interval',
-          'stops' : propertyStops,
-        });
-
-      }
-    }
-
-  });
+    });
+  }
 }
