@@ -11,13 +11,15 @@
     <!-- d3 imports -->
     <!-- <script src="https://d3js.org/d3.v5.min.js"></script> -->
     <script src="js/lib/d3.v3.min.js"></script>
-    <script src="js/lib/d3.parcoords_LJ.js"></script>
+    <script src="js/lib/d3.parcoords_LJ2.js"></script>
     <!-- mapbox -->
     <script src='https://api.mapbox.com/mapbox-gl-js/v0.52.0/mapbox-gl.js'></script>
     <script src="js/lib/geojson-extent.js"></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v0.52.0/mapbox-gl.css' rel='stylesheet' />
     <!--  turf js-->
     <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
+    <!--  colors -->
+    <script src="js/lib/colorbrewer.js"></script>
     <!--  styles -->
     <link rel="stylesheet" href="css/style.css">
 
@@ -28,16 +30,21 @@
     <div id='map'></div>
 
     <div id="interface">
-      <div id='left'></div>
+      <div id='left'>
+        <div id="left-header">data</div>
+        <div id="left-scroll-pane">
+        </div>
+      </div>
       <div id="bottom">
+        <div id="bottom-header">filter</div>
         <div id="bottom-scroll-pane">
         </div>
       </div>
+      <div id='legend'></div>
     </div>
 
-
-    <script src="js/wrangle.js"></script>
-    <script src="js/layer.js"></script>
+    <script src="js/components/MapController.js"></script>
+    <script src="js/utils/drop.js"></script>
     <script src="js/app.js"></script>
 
   </body>

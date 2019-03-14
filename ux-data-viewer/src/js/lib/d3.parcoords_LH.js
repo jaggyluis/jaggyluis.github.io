@@ -651,7 +651,7 @@ function rotateLabels() {
 }
 
 function dimensionLabels(d) {
-  return d in __.dimensionTitles ? __.dimensionTitles[d] : d;  // dimension display names
+  return d in __.dimensionTitles ? __.dimensionTitles[d] : d;  // dimension display namesyscale
 }
 
 //LH from https://rawgit.com/mcwillso/parallel-coordinates/Column-Fields/d3.parcoords.js
