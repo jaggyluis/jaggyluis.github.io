@@ -39,39 +39,39 @@ if (!('remove' in Element.prototype)) {
   };
 }
 
-function updateInterface() {
+function updateInterface(e) {
   bottom.style.height = interface.clientHeight - (left.clientHeight + 36) + "px";
 
   legend.style.bottom = bottom.clientHeight + 10 + "px";
   legend.style.left = left.clientWidth + 10 + "px";
   legend.style.width = interface.clientWidth - left.clientWidth  - 42 + "px";
 
-  left.__width = null;
+  //left._width = null;
 }
 
 left.addEventListener("mousedown", e => {
   down = true;
 });
 
-// leftHeader.addEventListener("click", e => {
-//
-//   if (left._width == undefined || left._width == null) {
-//
-//     left._width = left.clientWidth;
-//     left.style.width = "0px"
-//
-//   } else {
-//
-//     left.style.width = left._width + "px";
-//     left._width = null;
-//   }
-//
-// ;
-// });
+leftHeader.addEventListener("click", e => {
+
+  if (left._width == undefined || left._width == null) {
+
+    left._width = left.style.width;
+    left.style.width = "0px"
+
+  } else {
+
+    left.style.width = left._width;
+    left._width = null;
+  }
+
+;
+});
 
 document.addEventListener("mousemove", e => {
   if (down) {
-    updateInterface();
+    updateInterface(e);
   }
 });
 
@@ -82,10 +82,10 @@ document.addEventListener("mouseup", e => {
 });
 
 window.addEventListener("resize", e => {
-  updateInterface();
+  updateInterface(e);
 })
 
-updateInterface();
+updateInterface({target : null});
 
 drop(document.getElementsByTagName('body')[0], ['geojson'], (fileData, fileName) => {
 

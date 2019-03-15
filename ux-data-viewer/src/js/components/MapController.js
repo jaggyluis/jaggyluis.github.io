@@ -11,6 +11,7 @@ class MapController {
     this.keys = [];
     this.loading = false;
     this.container = map._container;
+    this.envelope = null;
 
     var self = this;
 
@@ -30,24 +31,58 @@ class MapController {
 
     var loader = document.createElement("div");
     loader.id = "overlay";
+    loader.classList.add("collapsed");
     loader.innerHTML = '<img src="img/loadloop.gif" id="loader"></img>';
     self.container.appendChild(loader);
 
     map.on("sourcedata", function(e) {
 
-      self.loading = !e.isSourceLoaded;
+      // if (allowedLoaders.includes(e.sourceId)) {
+      //   return;
+      // }
+      //
+      // console.log(e);
+      //
+      // self.loading = !e.isSourceLoaded;
+      //
+      // setTimeout(function() { // only use the loader if the loading lasts more than 0.5 sec
+      //
+      //   if (self.loading) {
+      //     loader.classList.remove("collapsed");
+      //   } else {
+      //     if (!loader.classList.contains("collapsed")) {
+      //       loader.classList.add("collapsed");
+      //     }
+      //   }
+      //
+      // }, 500);
 
-      setTimeout(function() { // only use the loader if the loading lasts more than 0.5 sec
+      setTimeout(() => {
+
+        self.loading = false;
+
+        Object.keys(self.sources).forEach(source => {
+
+          if (!e.target.isSourceLoaded(source)) {
+            self.loading = true;
+          }
+
+        });
 
         if (self.loading) {
+
           loader.classList.remove("collapsed");
+
         } else {
+
           if (!loader.classList.contains("collapsed")) {
             loader.classList.add("collapsed");
           }
+
         }
 
       }, 500);
+
 
 
     });
@@ -59,6 +94,39 @@ class MapController {
       }
 
     });
+
+    // var draw = new MapboxDraw({
+    //   displayControlsDefault: false,
+    //   controls: {
+    //     polygon: true,
+    //     trash: false
+    //   }
+    // });
+    //
+    // self.draw = draw;
+    // map.addControl(draw);
+    //
+    // //map.on('draw.create', updateArea);
+    // //map.on('draw.delete', updateArea);
+    // //map.on('draw.update', updateArea);
+    //
+    // //https://stackoverflow.com/questions/51073328/allow-drawing-only-one-shape-at-a-time-with-mapbox-gl-draw
+    // map.on('draw.modechange', (e) => {
+    //   const data = draw.getAll();
+    //   if (draw.getMode() == 'draw_polygon') {
+    //     var pids = []
+    //
+    //     // ID of the added template empty feature
+    //     const lid = data.features[data.features.length - 1].id
+    //
+    //     data.features.forEach((f) => {
+    //       if (f.geometry.type === 'Polygon' && f.id !== lid) {
+    //         pids.push(f.id)
+    //       }
+    //     })
+    //     draw.delete(pids)
+    //   }
+    // });
 
   }
 
@@ -172,6 +240,34 @@ class MapController {
       type: 'geojson',
       data
     });
+
+    // if (self.envelope == null) {
+    //   self.envelope = turf.envelope(data);
+    //   self.draw.add(self.envelope);
+    //
+    // } else {
+    //
+    //     // const all = self.draw.getAll();
+    //     // const pids = [];
+    //     //
+    //     // all.features.forEach((f) => {
+    //     //   pids.push(f.id)
+    //     // });
+    //     //
+    //     // self.draw.delete(pids)
+    //     //
+    //     // self.envelope = turf.envelope(data);
+    //     // self.draw.add(self.envelope);
+    //
+    //     const all = self.draw.getAll();
+    //     all.features.push(turf.envelope(data));
+    //
+    //     self.envelope = turf.envelope(all);
+    //     self.draw.add(self.envelope);
+    // }
+
+
+
 
   }
 
@@ -767,7 +863,7 @@ class MapController {
               var filter = {
                 filterKey : a,
                 filter : (value) => {
-                    return value[a] > bounds[1] || value[a] < bounds[0];
+                    return value[a] >= bounds[1] || value[a] <= bounds[0];
                 }
               };
 
@@ -775,6 +871,12 @@ class MapController {
 
               self.addFilters(key, [filter]);
               e.stopPropagation();
+
+              var domain = source.coords.dimensions()[a].yscale.domain();
+              var extents = source.coords.brushExtents();
+              extents[a] = domain;
+
+              source.coords.brushExtents(extents);
             }
 
           };
@@ -1102,6 +1204,8 @@ class MapController {
       return;
     }
 
+    var active = source.active;
+
     filters.forEach(f => {
       source.filters[f.filterKey] = f.filter;
     });
@@ -1110,6 +1214,11 @@ class MapController {
     self.updateFilterLayer(key, true);
     self.updateFilterLayerPropertyStops(key);
     self.updateFilter(key);
+
+    if (active != null) {
+      self.selectFilterLayerProperty(key, active);
+    }
+
     self.updateLegend();
   }
 
@@ -1122,6 +1231,8 @@ class MapController {
       return;
     }
 
+    var active = source.active;
+
     if (source.filters[filterKey] !== undefined) {
       delete source.filters[filterKey];
     }
@@ -1130,6 +1241,11 @@ class MapController {
     self.updateFilterLayer(key, true);
     self.updateFilterLayerPropertyStops(key);
     self.updateFilter(key);
+
+    if (active != null) {
+      self.selectFilterLayerProperty(key, active);
+    }
+
     self.updateLegend();
   }
 
@@ -1213,52 +1329,81 @@ class MapController {
         l.addEventListener("click", function(e) {
 
           var property = l.innerHTML; // NOTE - this is the selection ---
-          var state = source.states[property];
-          var color = "#000000";
-          var interval = state.propertyClamp !== undefined && state.propertyClamp !== null ? state.propertyClamp : state.propertyInterval;
-          var func = d3.scale.quantile().domain(interval).range(state.propertyStyle);
-
-          if (state.propertyType === "string") {
-
-            func = function(property) {
-              for (var i = 0; i<state.propertyStops.length; i++) {
-                if (state.propertyStops[i][0] === property) {
-                  return state.propertyStops[i][1];
-                }
-              }
-
-              return "grey";
-            }
-          }
-
-          d3.selectAll(".label")[0].forEach(other => {
-            if (other.innerHTML !== property) {
-              other.classList.remove("selected");
-            }
-          });
-
-          if (l.classList.contains("selected")) {
-            l.classList.remove("selected");
-            source.active = null;
-            property = null;
-
-          } else {
-            l.classList.add("selected");
-            source.active = property;
-            color = function(d) { return func(d[property]); };
-          }
-
-          source.coords
-            .color(color)
-            .alpha(0.05)
-            .render();
-
-          self.updateFilterLayerControllerSelection(key);
-          self.updateFilterLayerMapPaintProperties(key, property);
-          self.updateLegend();
+          self.selectFilterLayerProperty(key, property);
 
         });
     });
+  }
+
+  selectFilterLayerProperty(key, property) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null || source.coords === null) {
+      return;
+    }
+
+    var state = source.states[property];
+
+    if (state === undefined || state === null) {
+      return;
+    }
+
+    var l = null;
+
+    d3.selectAll(".label")[0].forEach(label => {
+       if (label.innerHTML === property) {
+         l = label;
+       }
+     });
+
+     if (l === null) {
+       return;
+     }
+
+    var color = "#000000";
+    var interval = state.propertyClamp !== undefined && state.propertyClamp !== null ? state.propertyClamp : state.propertyInterval;
+    var func = d3.scale.quantile().domain(interval).range(state.propertyStyle);
+
+    if (state.propertyType === "string") {
+
+      func = function(property) {
+        for (var i = 0; i<state.propertyStops.length; i++) {
+          if (state.propertyStops[i][0] === property) {
+            return state.propertyStops[i][1];
+          }
+        }
+
+        return "grey";
+      }
+    }
+
+    d3.selectAll(".label")[0].forEach(other => {
+      if (other.innerHTML !== property) {
+        other.classList.remove("selected");
+      }
+    });
+
+    if (l.classList.contains("selected")) {
+      l.classList.remove("selected");
+      source.active = null;
+      property = null;
+
+    } else {
+      l.classList.add("selected");
+      source.active = property;
+      color = function(d) { return func(d[property]); };
+    }
+
+    source.coords
+      .color(color)
+      .alpha(0.05)
+      .render();
+
+    self.updateFilterLayerControllerSelection(key);
+    self.updateFilterLayerMapPaintProperties(key, property);
+    self.updateLegend();
   }
 
   updateFilterLayerMapPaintProperties(key, property) {
@@ -1625,6 +1770,15 @@ class MapController {
           var state = source.states[source.active];
           var bins = self.getBins(s)
 
+          var contentBars = document.createElement("div");
+          contentBars.classList.add("legend-content-bars");
+
+          var contentHist = document.createElement("div");
+          contentHist.classList.add("legend-content-hist");
+
+          content.appendChild(contentHist);
+          content.appendChild(contentBars);
+
           for (var i = 0; i< state.propertyStops.length; i++) {
 
             if (bins[i].valid === false) {
@@ -1666,16 +1820,74 @@ class MapController {
               value.innerHTML = state.propertyStops[i][0];
             }
 
-            content.appendChild(item);
+            contentBars.appendChild(item);
 
             item.appendChild(color);
-            item.appendChild(bar);
+            //item.appendChild(bar);
             item.appendChild(value);
-
-
-
-
           }
+
+          var element = document.createElement("div");
+          element.classList.add("legend-hist");
+
+          contentHist.appendChild(element);
+
+          var margin = {top: 4, right: 30, bottom: 10, left: 40},
+              width = element.clientWidth - margin.left - margin.right,
+              height = element.clientHeight - margin.top - margin.bottom;
+
+          var x = d3.scale.ordinal().rangeRoundBands([0, width], .05);
+          var y = d3.scale.linear().range([height, 0]);
+
+          var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient("bottom");
+
+          var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .ticks(5);
+
+          var svg = d3.select(element).append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform",
+                  "translate(" + margin.left + "," + margin.top + ")");
+
+          x.domain(bins.map(function(d) { return d.value; }));
+          y.domain([0, d3.max(bins, function(d) { return d.count; })]);
+
+          svg.append("g")
+              .attr("class", "x axis")
+              .attr("transform", "translate(0," + height + ")")
+              .call(xAxis)
+            .selectAll("text").remove();
+              // .style("text-anchor", "end")
+              // .attr("dx", "-.8em")
+              // .attr("dy", "-.55em")
+              // .attr("transform", "rotate(-90)" );
+
+          svg.append("g")
+              .attr("class", "y axis")
+              .call(yAxis)
+            // .append("text")
+            //   //.attr("transform", "rotate(-90)")
+            //   .attr("y", -25)
+            //   //.attr("x", 10)
+            //   .attr("dy", ".71em")
+            //   .style("text-anchor", "end")
+            //   .text("count");
+
+          svg.selectAll("bar")
+              .data(bins)
+            .enter().append("rect")
+              .style("fill", function(d) { return  state.propertyStops[d.index][1]; })
+              .style("opacity", 0.8)
+              .attr("x", function(d) { return x(d.value); })
+              .attr("width", x.rangeBand())
+              .attr("y", function(d) { return y(d.count); })
+              .attr("height", function(d) { return height - y(d.count); });
 
 
         }
