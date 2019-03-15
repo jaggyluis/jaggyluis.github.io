@@ -152,9 +152,9 @@ class MapController {
 
       self.sources[key].states[property] = propertyState;
 
-      if (!(property === "_id")) { // NOTE - set the baseline parcoords to just be _id ---
+      //if (!(property === "_id")) { // NOTE - set the baseline parcoords to just be _id ---
         self.sources[key].hidden.push(property);
-      }
+      //}
 
     });
 
@@ -1372,11 +1372,6 @@ class MapController {
           paint : paint
         });
 
-        paintProperties.push({
-          id : key + "-filter",
-          type :"circle-stroke-color",
-          paint : paint
-        });
       }
 
     }
@@ -1817,7 +1812,7 @@ function buildGeoJeonLineStringBaseLayer(source) {
                     "#000000",
                     ["boolean", ["feature-state", "selected"], false],
                     "#000000",
-                     "rgb(200,200,200)"
+                    "#ffffff"
                    ],
          'line-width' : [
                      "case",
@@ -1864,26 +1859,25 @@ function buildGeoJsonPointBaseLayer(source) {
     type : "circle",
     minzoom : 10,
     paint : {
-        // Size circle radius by earthquake magnitude and zoom level
         "circle-radius":  [
             "interpolate",
             ["linear"],
             ["zoom"],
-            14, 1,
-            18, 2
-        ],
-        // Color circle by earthquake magnitude
-        "circle-color": "rgba(100,100,100, 0.3)",
-        "circle-stroke-color": "rgba(100,100,100, 0.3)",
-        "circle-stroke-width": 0,
-        // Transition from heatmap to circle layer by zoom level
-        "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
             10, 0,
-            20, 1
-        ]
+            18, 3,
+            25, 10
+        ],
+        "circle-color": "rgba(100,100,100, 0.1)",
+        //"circle-stroke-color": "rgba(100,100,100, 0.1)",
+        "circle-stroke-width": 0,
+        "circle-opacity": 1
+        // "circle-opacity": [
+        //     "interpolate",
+        //     ["linear"],
+        //     ["zoom"],
+        //     10, 0,
+        //     20, 1
+        // ]
     }
 
   };
@@ -1898,26 +1892,25 @@ function buildGeoJsonPointFilterLayer(source, filter) {
     filter : filter,
     minzoom : 10,
     paint : {
-        // Size circle radius by earthquake magnitude and zoom level
         "circle-radius":  [
             "interpolate",
             ["linear"],
             ["zoom"],
-            14, 0,
-            18, 2
+            10, 0,
+            18, 3,
+            25, 10
         ],
-        // Color circle by earthquake magnitude
         "circle-color": "#616161",
-        "circle-stroke-color": "#616161",
-        "circle-stroke-width": 1,
-        // Transition from heatmap to circle layer by zoom level
-        "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            7, 0,
-            8, 1
-        ]
+        //"circle-stroke-color": "#616161",
+        "circle-stroke-width": 0,
+        "circle-opacity": 1
+        // "circle-opacity": [
+        //     "interpolate",
+        //     ["linear"],
+        //     ["zoom"],
+        //     7, 0,
+        //     8, 1
+        // ]
     }
 
   };
@@ -1996,8 +1989,6 @@ function wrangle(data) {
       f.id = f.properties["_id"]; // geojson source specification ---
 
       // NOTE - for unit testing on all types ---
-
-      //f.properties['test'] = Math.random();
 
       var lat = 0;
       var lon = 0;

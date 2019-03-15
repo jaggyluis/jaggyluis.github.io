@@ -111,6 +111,7 @@ function loadDataLayer(data, label) {
 
   var boxContent = document.createElement("div");
   boxContent.classList.add("box-content");
+
   boxContent.id = label + "-box-content";
   box.appendChild(boxContent);
 
@@ -121,6 +122,7 @@ function loadDataLayer(data, label) {
   boxContent.appendChild(boxCoords);
 
   mapController.addFilterLayerController(label, boxCoords);
+  boxContent.classList.add("collapsed"); // build parcoords then collapse ---
 
   var doc = document.createElement("div");
   doc.classList.add("document");
@@ -160,7 +162,9 @@ function loadDataLayer(data, label) {
       }
   });
 
-  mapController.getSourceKeyProperties(label).forEach(property => {
+  var propertyCheckBoxes = [];
+
+  mapController.getSourceKeyProperties(label).forEach((property, index) => {
 
     var propertyState = mapController.getSourceKeyPropertyState(label, property);
 
@@ -178,10 +182,9 @@ function loadDataLayer(data, label) {
     propertyLabel.innerHTML = property;
     propertyLabel.classList.add("document-item-label");
 
-    if (property === "_id") { // NOTE - _id is always selected ---
-      propertyCheckBox.setAttribute("checked", true);
-      propertyLabel.classList.add("selected");
-    }
+    propertyLabel.addEventListener("click", (e) => {
+      propertyCheckBox.click(e);
+    })
 
     propertyHeader.appendChild(propertyCheckBox);
     propertyHeader.appendChild(propertyLabel);
@@ -190,11 +193,32 @@ function loadDataLayer(data, label) {
 
     var propertyContent = null;
 
+    propertyCheckBoxes.push([property, propertyCheckBox, propertyLabel, propertyContent]);
+
     propertyCheckBox.addEventListener("click", (e) => {
 
-      if (property === "_id") { // NOTE - _id is always selected --- prevent 0 dimension errors ---
+      var ctrl = mapController.areKeysDown(["Control"]);
+
+      if (ctrl) {
+
         e.target.checked = true;
-        return;
+
+        propertyCheckBoxes.forEach(tuple => {
+
+          if (tuple[0] === property) {
+            return;
+          }
+
+          tuple[1].checked = false;
+          tuple[2].classList.remove("selected");
+
+          if (tuple[3] !== null) {
+            tuple[3].classList.add("collapsed");
+          }
+
+          mapController.updateFilterLayerProperties(label, tuple[0], false);
+        });
+
       }
 
       if (e.target.checked) {
@@ -216,6 +240,23 @@ function loadDataLayer(data, label) {
         }
       }
 
+      var allUnchecked = true;
+
+      for (var i = 0; i< propertyCheckBoxes.length; i++) {
+        if (propertyCheckBoxes[i][1].checked) {
+          allUnchecked = false;
+          break;
+        }
+      }
+
+      if (allUnchecked) {
+        if (!boxContent.classList.contains("collapsed")) {
+          boxContent.classList.add("collapsed");
+        }
+      } else {
+        boxContent.classList.remove("collapsed");
+      }
+
     });
 
     if (propertyState && propertyState.propertyType === "string") {
@@ -224,6 +265,8 @@ function loadDataLayer(data, label) {
       propertyContent.classList.add("document-item-content");
       propertyContent.classList.add("collapsed");
       propertyDiv.appendChild(propertyContent);
+
+      propertyCheckBoxes[index][3] = propertyContent; // update the tuple since the object reference is not in scope ---
 
       var propertyCategories = propertyState.propertyCategories;
       var propertyCategoryCheckBoxes = [];

@@ -17,6 +17,7 @@ d3.parcoords = function(config) {
     color: "#069",
     composite: "source-over",
     alpha: 0.7,
+    duration : 0, // transition duration in ms 1100 default ---
     bundlingStrength: 0.5,
     bundleDimension: null,
     smoothness: 0.0,
@@ -696,7 +697,7 @@ function flipAxisAndUpdatePCP(dimension) {
 
   d3.select(this.parentElement)
     .transition()
-      .duration(1100)
+      .duration(__.duration)
       .call(axis.scale(__.dimensions[dimension].yscale));
 
   pc.render();
@@ -1070,12 +1071,12 @@ pc.updateAxes = function() {
   g_data.attr("opacity", 0);
   g_data.select(".axis")
     .transition()
-      .duration(1100)
+      .duration(__.duration)
       .each(function(d) { d3.select(this).call( pc.applyAxisConfig(axis, __.dimensions[d]) )
       });
   g_data.select(".label")
     .transition()
-      .duration(1100)
+      .duration(__.duration)
       .text(dimensionLabels)
       .attr("transform", "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")");
 
@@ -1083,13 +1084,13 @@ pc.updateAxes = function() {
   g_data.exit().remove();
 
   g = pc.svg.selectAll(".dimension");
-  g.transition().duration(1100)
+  g.transition().duration(__.duration)
     .attr("transform", function(p) { return "translate(" + position(p) + ")"; })
     .style("opacity", 1);
 
   pc.svg.selectAll(".axis")
     .transition()
-      .duration(1100)
+      .duration(__.duration)
       .each(function(d) { d3.select(this).call( pc.applyAxisConfig(axis, __.dimensions[d]) );
       });
 
@@ -1192,7 +1193,7 @@ pc.reorder = function(rowdata) {
     pc.unhighlight();
 
     g.transition()
-      .duration(1500)
+      .duration(__.duration) // LJ - this one was 1500
       .attr("transform", function(d) {
         return "translate(" + xscale(d) + ")";
       });
