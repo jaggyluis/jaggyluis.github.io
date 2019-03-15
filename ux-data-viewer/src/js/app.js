@@ -53,21 +53,21 @@ left.addEventListener("mousedown", e => {
   down = true;
 });
 
-leftHeader.addEventListener("click", e => {
-
-  if (left._width == undefined || left._width == null) {
-
-    left._width = left.style.width;
-    left.style.width = "0px"
-
-  } else {
-
-    left.style.width = left._width;
-    left._width = null;
-  }
-
-;
-});
+// leftHeader.addEventListener("click", e => {
+//
+//   if (left._width == undefined || left._width == null) {
+//
+//     left._width = left.style.width;
+//     left.style.width = "0px"
+//
+//   } else {
+//
+//     left.style.width = left._width;
+//     left._width = null;
+//   }
+//
+// ;
+// });
 
 document.addEventListener("mousemove", e => {
   if (down) {
