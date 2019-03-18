@@ -44,6 +44,7 @@ var pc = function(selection, label) {
 
   __.width = selection[0][0].clientWidth;
   __.height = selection[0][0].clientHeight;
+  __.label =  (label || null);
 
   // canvas data layers
   ["marks", "foreground", "brushed", "highlight"].forEach(function(layer) {
@@ -240,7 +241,8 @@ pc.defaultScales = function() {
       return d3.scale.ordinal()
         .domain(domain)
         .rangePoints(getRange());
-    }
+    },
+    "boolean" : function(k) { return this["string"](k); }
   };
 }
 
@@ -249,6 +251,7 @@ pc.autoscale = function() {
   var defaultScales = pc.defaultScales();
 
   d3.keys(__.dimensions).forEach(function(k) {
+
     if (!__.dimensions[k].yscale || __.dimensions[k].yscale){
       __.dimensions[k].yscale = defaultScales[__.dimensions[k].type](k);
     }

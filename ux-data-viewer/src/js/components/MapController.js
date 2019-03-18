@@ -35,6 +35,8 @@ class MapController {
     loader.innerHTML = '<img src="img/loadloop.gif" id="loader"></img>';
     self.container.appendChild(loader);
 
+    self.loader = loader;
+
     map.on("sourcedata", function(e) {
 
       // if (allowedLoaders.includes(e.sourceId)) {
@@ -69,7 +71,7 @@ class MapController {
 
         });
 
-        if (self.loading) {
+        if (self.loading || self.loadingOverride) {
 
           loader.classList.remove("collapsed");
 
@@ -130,6 +132,24 @@ class MapController {
 
   }
 
+  setLoading(loading) {
+
+    this.loading = loading;
+
+    if (loading) {
+      if (!loader.classList.contains("collapsed")) {
+        loader.classList.add("collapsed");
+      }
+
+      this.loadingOverride = loading;
+
+    } else {
+      loader.classList.remove("collapsed");
+
+      this.loadingOverride = loading;
+    }
+  }
+
   isLoading() {
     return this.loading;
   }
@@ -173,6 +193,7 @@ class MapController {
     self.sources[key].source = key;
     self.sources[key].states = {};
     self.sources[key].active = null;
+    self.sources[key].height = "height_m";
     self.sources[key].visible = true;
     self.sources[key].brushed = [];
     self.sources[key].coords = null;
@@ -183,6 +204,10 @@ class MapController {
     self.sources[key].filters = {
       default : () => { return false; }
     };
+
+    self.sources[key].values.forEach(d => { // NOTE - adds all the geometry at the beginning ---
+      self.sources[key].filtered.push(d._id);
+    });
 
     var properties = Object.keys(self.sources[key].properties);
     var propertyTypes = detectTypes(self.sources[key].values);
@@ -366,12 +391,14 @@ class MapController {
 
     switch (type) {
       case "Polygon":
+      case "MultiPolygon":
 
         self.map.addLayer( buildGeoJsonPolygonBaseLayer(key), firstSymbolId );
 
         break;
 
       case "LineString":
+      case "MultiLineString":
 
         self.map.addLayer( buildGeoJeonLineStringBaseLayer(key), firstSymbolId );
 
@@ -418,6 +445,7 @@ class MapController {
 
     switch (type) {
       case "Polygon":
+      case "MultiPolygon":
 
         var layer =  buildGeoJsonPolygonFilterLayer(key, self.sources[key].filtered);
         var flat = false;
@@ -442,7 +470,7 @@ class MapController {
             if (flat) {
 
               console.log("make extruded");
-              self.map.setPaintProperty(layer.id, "fill-extrusion-height", ["get", "height"]);
+              self.map.setPaintProperty(layer.id, "fill-extrusion-height", ["get", source.height]);
             }
 
             flat = false;
@@ -454,6 +482,7 @@ class MapController {
         break;
 
       case "LineString":
+      case "MultiLineString":
 
         var layer =  buildGeoJsonLineStringFilterLayer(key, self.sources[key].filtered);
 
@@ -806,7 +835,7 @@ class MapController {
           self.updateFilterLayer(key);
           self.updateLegend();
 
-          var dimensions = d3.selectAll(".dimension")[0];
+          var dimensions = source.coords.selection.selectAll(".dimension")[0];
           var extent = d3.select(dimensions.filter(function(d) { return d.__data__ === a; })[0]).select(".extent");
           var bounds = source.coords.brushExtents()[a];
 
@@ -1138,13 +1167,34 @@ class MapController {
 
     var filter = ['in', '_id'];
 
-    if (!clear && (source.brushed.length !== source.values.length)) {
+    if (!clear /* && (source.brushed.length !== source.values.length ) */) { // NOTE - turn on for init with filter ---
 
       source.brushed.forEach(d => {
         filter.push(d._id);
       });
 
+    } else {  // NOTE - turn off for init with  filter ---
+
+      var values = [];
+
+      source.values.forEach(value => {
+
+          var keep = true;
+
+          Object.keys(source.filters).forEach(filter => {
+
+              if (source.filters[filter](value)) {
+                keep = false;
+              }
+          });
+
+          if (keep) {
+            filter.push(value._id);
+          }
+      });
     }
+
+    //console.log(self.map.getStyle().layers);
 
     self.map.setFilter(key + '-filter', filter);
 
@@ -1314,11 +1364,11 @@ class MapController {
 
     self.updateFilterLayerMapPaintProperties(key, null);
 
-    d3.selectAll(".label")[0].forEach(other => {
+    source.coords.selection.selectAll(".label")[0].forEach(other => {
       other.classList.remove("selected");
     });
 
-    d3.selectAll(".label")[0].forEach(function(l) {
+    source.coords.selection.selectAll(".label")[0].forEach(function(l) {
 
         if (l.hasEventListener) {
           return; // Note - only one listener per label ---
@@ -1352,7 +1402,7 @@ class MapController {
 
     var l = null;
 
-    d3.selectAll(".label")[0].forEach(label => {
+    source.coords.selection.selectAll(".label")[0].forEach(label => {
        if (label.innerHTML === property) {
          l = label;
        }
@@ -1379,7 +1429,7 @@ class MapController {
       }
     }
 
-    d3.selectAll(".label")[0].forEach(other => {
+    source.coords.selection.selectAll(".label")[0].forEach(other => {
       if (other.innerHTML !== property) {
         other.classList.remove("selected");
       }
@@ -1419,7 +1469,7 @@ class MapController {
 
     if (property === undefined || property === null) {
 
-      if (source.types.includes("LineString")) {
+      if (source.types.includes("LineString") || source.types.includes("MultiLineString")) {
 
         paintProperties.push({
           id : key + "-filter",
@@ -1427,7 +1477,7 @@ class MapController {
           paint : "#616161"
         });
 
-      } else  if (source.types.includes("Polygon")) {
+      } else  if (source.types.includes("Polygon") || source.types.includes("MultiPolygon") ) {
 
         paintProperties.push({
           id : key + "-filter",
@@ -1493,7 +1543,7 @@ class MapController {
         alert("uknown property type " + state.propertyType);
       }
 
-      if (source.types.includes("LineString")) {
+      if (source.types.includes("LineString") || source.types.includes("MultiLineString")) {
 
         paintProperties.push({
           id : key + "-filter",
@@ -1501,7 +1551,7 @@ class MapController {
           paint : paint,
         });
 
-      } else  if (source.types.includes("Polygon")) {
+      } else  if (source.types.includes("Polygon") || source.types.includes("MultiPolygon") ) {
 
         paintProperties.push({
           id : key + "-filter",
@@ -1606,6 +1656,10 @@ class MapController {
       return bins;
     }
 
+    if (data.length === 0) {
+      data = source.coords.data();
+    }
+
     if (state.propertyType === "number") {
 
       state.propertyStops.forEach((s, i) => {
@@ -1623,7 +1677,7 @@ class MapController {
 
       });
 
-      if (data.length !== source.values.length) {
+     // if (data.length !== source.values.length) { // NOTE - turn on for init with filter ---
 
         data.forEach(d => {
 
@@ -1652,7 +1706,7 @@ class MapController {
 
         });
 
-      }
+      //}
 
     } else if (state.propertyType === "string") {
 
@@ -1685,7 +1739,7 @@ class MapController {
 
       });
 
-      if (data.length !== source.values.length) {
+      // if (data.length !== source.values.length) { // NOTE - turn on for init with filter ---
 
         data.forEach(d => {
 
@@ -1706,7 +1760,7 @@ class MapController {
           bins[index].data.push(d);
 
         });
-      }
+      //}
 
     } else {
 
@@ -1827,6 +1881,15 @@ class MapController {
             item.appendChild(value);
           }
 
+          var bars = [];
+
+          bins.forEach(bin => {
+            if (bin.valid) {
+              bars.push(bin);
+            }
+          });
+
+
           var element = document.createElement("div");
           element.classList.add("legend-hist");
 
@@ -1855,8 +1918,8 @@ class MapController {
             .attr("transform",
                   "translate(" + margin.left + "," + margin.top + ")");
 
-          x.domain(bins.map(function(d) { return d.value; }));
-          y.domain([0, d3.max(bins, function(d) { return d.count; })]);
+          x.domain(bars.map(function(d) { return d.value; }));
+          y.domain([0, d3.max(bars, function(d) { return d.count; })]);
 
           svg.append("g")
               .attr("class", "x axis")
@@ -1880,7 +1943,7 @@ class MapController {
             //   .text("count");
 
           svg.selectAll("bar")
-              .data(bins)
+              .data(bars)
             .enter().append("rect")
               .style("fill", function(d) { return  state.propertyStops[d.index][1]; })
               .style("opacity", 0.8)
@@ -2202,39 +2265,39 @@ function wrangle(data) {
 
       // NOTE - for unit testing on all types ---
 
-      var lat = 0;
-      var lon = 0;
-
-      switch (type) {
-
-        case "Polygon":
-
-          lon = f.geometry.coordinates[0][0][0];
-          lat = f.geometry.coordinates[0][0][1];
-
-          break;
-
-        case "LineString":
-
-          lon = f.geometry.coordinates[0][0];
-          lat = f.geometry.coordinates[0][1];
-
-          break;
-
-        case "Point":
-
-          lon = f.geometry.coordinates[0];
-          lat = f.geometry.coordinates[1];
-
-          break;
-
-        default:
-          break;
-
-      }
-
-      f.properties['lat'] = lat;
-      f.properties['lon'] = lon;
+      // var lat = 0;
+      // var lon = 0;
+      //
+      // switch (type) {
+      //
+      //   case "Polygon":
+      //
+      //     lon = f.geometry.coordinates[0][0][0];
+      //     lat = f.geometry.coordinates[0][0][1];
+      //
+      //     break;
+      //
+      //   case "LineString":
+      //
+      //     lon = f.geometry.coordinates[0][0];
+      //     lat = f.geometry.coordinates[0][1];
+      //
+      //     break;
+      //
+      //   case "Point":
+      //
+      //     lon = f.geometry.coordinates[0];
+      //     lat = f.geometry.coordinates[1];
+      //
+      //     break;
+      //
+      //   default:
+      //     break;
+      //
+      // }
+      //
+      // f.properties['lat'] = lat;
+      // f.properties['lon'] = lon;
 
       Object.keys(f.properties).forEach(k => {
 

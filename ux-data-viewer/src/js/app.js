@@ -85,7 +85,125 @@ window.addEventListener("resize", e => {
   updateInterface(e);
 })
 
+var hiddenProperties = [
+  "_id",
+  "_far",
+  "_osr",
+  "_dist__site",
+  "org_id",
+  "shape_area",
+  "shape_perimeter",
+  "site_intersects",
+  "text",
+  "subclasses",
+  "linetype",
+  "layer",
+  "extendeden",
+  "entityhand",
+  "kept",
+  "perimeter_",
+  "site__intersects",
+  "misc",
+  "recreati_1",
+  "source",
+  "target"
+]
+
+var schemeBase = {
+  buildings : "data/syd/190315/buildings_existing.geojson",
+  openSpaces : "data/syd/190315/public_open_spaces.geojson",
+  blocks :  "data/syd/blocks.geojson",
+  points :  "data/syd/points.geojson"
+}
+
+var scheme1m = {
+
+  blocks :      "data/syd/190315/blocks_pr_1mil.geojson",
+  buildings :   "data/syd/190315/buildings_pr_1mil.geojson",
+  parks :       "data/syd/190315/parks_pr_1mil.geojson",
+  ways : "data/syd/190315/ways_1mil_gc.geojson",
+
+}
+
+var scheme700k = {
+
+  blocks :      "data/syd/190315/blocks_pr_700k.geojson",
+  buildings :   "data/syd/190315/buildings_pr_700k.geojson",
+  parks :       "data/syd/190315/parks_pr_700k.geojson",
+  ways : "data/syd/190315/ways_700k_gc.geojson",
+
+}
+
 updateInterface({target : null});
+
+map.on("load", function() {
+
+  mapController.setLoading(true);
+
+  var count = 0;
+
+  Object.keys(schemeBase).forEach(key => {
+
+    count += 1;
+
+    d3.json(schemeBase[key], (d) => {
+
+      console.log(key, count);
+
+      loadDataLayer(d, key + '_base');
+
+      count -= 1;
+
+      if (count <= 0) {
+        mapController.setLoading(false);
+      }
+
+    });
+
+  });
+
+  Object.keys(scheme1m).forEach(key => {
+
+    count += 1;
+
+    d3.json(scheme1m[key], (d) => {
+
+      console.log(key, count);
+
+      loadDataLayer(d, key + '_1m');
+
+      count -= 1;
+
+      if (count <= 0) {
+        mapController.setLoading(false);
+      }
+
+    });
+
+  });
+
+  Object.keys(scheme700k).forEach(key => {
+
+    count += 1;
+
+    d3.json(scheme1m[key], (d) => {
+
+      console.log(key, count);
+
+      loadDataLayer(d, key + '_700k');
+
+      count -= 1;
+
+      if (count <= 0) {
+        mapController.setLoading(false);
+      }
+
+    });
+
+  });
+})
+
+
 
 drop(document.getElementsByTagName('body')[0], ['geojson'], (fileData, fileName) => {
 
@@ -93,7 +211,7 @@ drop(document.getElementsByTagName('body')[0], ['geojson'], (fileData, fileName)
 
 });
 
-function loadDataLayer(data, label) {
+function loadDataLayer(data, label, open) {
 
   mapController.addSource(label, data);
   mapController.addLayer(label);
@@ -162,6 +280,10 @@ function loadDataLayer(data, label) {
       }
   });
 
+  if (open === undefined || !open) {
+    docLabel.click();
+  }
+
   var propertyCheckBoxes = [];
 
   mapController.getSourceKeyProperties(label).forEach((property, index) => {
@@ -171,6 +293,11 @@ function loadDataLayer(data, label) {
     var propertyDiv = document.createElement("div");
     propertyDiv.id = label + "-" + property;
     propertyDiv.classList.add("document-item");
+
+    if (hiddenProperties.includes(property)) {
+      //console.log("hide : " + property );
+      propertyDiv.classList.add("collapsed");
+    }
 
     var propertyHeader = document.createElement("div");
     propertyHeader.classList.add("document-item-header");

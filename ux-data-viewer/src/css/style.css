@@ -296,7 +296,7 @@ img {
   font-size: 12px;
   font-weight: bold;
   padding: 5px;
-  padding-left: 15px;
+  //padding-left: 15px;
   position: -webkit-sticky;
   position: sticky;
   top: 0px;
