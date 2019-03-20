@@ -727,6 +727,11 @@ function dimensionMax(d) {
     // console.log(d);
 
     var domain = yscale[d].domain();
+
+    if (domain[0] === undefined) {
+      return "none";
+    }
+
     return d in yscale ? (domain[domain.length-1]).toFixed(2) : d;  // dimension display names
 }
 
@@ -736,6 +741,11 @@ function dimensionMin(d) {
     // console.log(d);
 
     var domain = yscale[d].domain();
+
+    if (domain[0] === undefined) {
+      return "none";
+    }
+
     return d in yscale ? (domain[0]).toFixed(2) : d;  // dimension display names
 }
 

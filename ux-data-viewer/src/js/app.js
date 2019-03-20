@@ -12,7 +12,8 @@ const config = {
 const map = new mapboxgl.Map({
     container: 'map',
     style: config.styles.greyLight,
-    zoom: 0.1
+    zoom: 0.1,
+    preserveDrawingBuffer: true
 });
 
 const mapController = new MapController(map);
@@ -106,33 +107,47 @@ var hiddenProperties = [
   "misc",
   "recreati_1",
   "source",
-  "target"
+  "target",
+  "id",
+  "lat",
+  "lon"
 ]
 
 var schemeBase = {
-  buildings : "data/syd/190315/buildings_existing.geojson",
-  openSpaces : "data/syd/190315/public_open_spaces.geojson",
-  blocks :  "data/syd/blocks.geojson",
-  points :  "data/syd/points.geojson"
+  id : "base",
+  data : {
+    buildings : "data/syd/190315/buildings_existing.geojson",
+    openSpaces : "data/syd/190315/public_open_spaces.geojson",
+    blocks :  "data/syd/blocks.geojson",
+    points :  "data/syd/points.geojson"
+  }
 }
 
 var scheme1m = {
-
-  blocks :      "data/syd/190315/blocks_pr_1mil.geojson",
-  buildings :   "data/syd/190315/buildings_pr_1mil.geojson",
-  parks :       "data/syd/190315/parks_pr_1mil.geojson",
-  ways : "data/syd/190315/ways_1mil_gc.geojson",
-
+  id : "1m",
+  data : {
+    blocks :      "data/syd/190315/blocks_pr_1mil.geojson",
+    buildings :   "data/syd/190315/buildings_pr_1mil.geojson",
+    parks :       "data/syd/190315/parks_pr_1mil.geojson",
+    ways : "data/syd/190315/ways_1mil_gc.geojson",
+  }
 }
 
 var scheme700k = {
-
-  blocks :      "data/syd/190315/blocks_pr_700k.geojson",
-  buildings :   "data/syd/190315/buildings_pr_700k.geojson",
-  parks :       "data/syd/190315/parks_pr_700k.geojson",
-  ways : "data/syd/190315/ways_700k_gc.geojson",
-
+  id : "700k",
+  data : {
+    blocks :      "data/syd/190315/blocks_pr_700k.geojson",
+    buildings :   "data/syd/190315/buildings_pr_700k.geojson",
+    parks :       "data/syd/190315/parks_pr_700k.geojson",
+    ways : "data/syd/190315/ways_700k_gc.geojson",
+  }
 }
+
+var schemes = [
+  schemeBase,
+  scheme1m,
+  scheme700k
+]
 
 updateInterface({target : null});
 
@@ -142,66 +157,30 @@ map.on("load", function() {
 
   var count = 0;
 
-  Object.keys(schemeBase).forEach(key => {
+  schemes.forEach(scheme => {
 
-    count += 1;
+    Object.keys(scheme.data).forEach(key => {
 
-    d3.json(schemeBase[key], (d) => {
+      count += 1;
 
-      console.log(key, count);
+      d3.json(scheme.data[key], (d) => {
 
-      loadDataLayer(d, key + '_base');
+        console.log(key, count);
 
-      count -= 1;
+        loadDataLayer(d, key + '_' + scheme.id);
 
-      if (count <= 0) {
-        mapController.setLoading(false);
-      }
+        count -= 1;
 
-    });
+        if (count <= 0) {
+          mapController.setLoading(false);
+        }
 
-  });
-
-  Object.keys(scheme1m).forEach(key => {
-
-    count += 1;
-
-    d3.json(scheme1m[key], (d) => {
-
-      console.log(key, count);
-
-      loadDataLayer(d, key + '_1m');
-
-      count -= 1;
-
-      if (count <= 0) {
-        mapController.setLoading(false);
-      }
+      });
 
     });
-
   });
 
-  Object.keys(scheme700k).forEach(key => {
-
-    count += 1;
-
-    d3.json(scheme1m[key], (d) => {
-
-      console.log(key, count);
-
-      loadDataLayer(d, key + '_700k');
-
-      count -= 1;
-
-      if (count <= 0) {
-        mapController.setLoading(false);
-      }
-
-    });
-
-  });
-})
+});
 
 
 
@@ -313,7 +292,22 @@ function loadDataLayer(data, label, open) {
       propertyCheckBox.click(e);
     })
 
+    var propertyExtrudeImg = document.createElement("img");
+    propertyExtrudeImg.src = "img/cube-icon.png";
+    propertyExtrudeImg.style =" width: 10px; height: 10px;  padding-right: 10px; opacity: 0.3; ";
+
+    var propertyExtrudeButton = document.createElement("div");
+    //propertyExtrudeButton.type = "button";
+    propertyExtrudeButton.title = "extrude";
+    propertyExtrudeButton.appendChild(propertyExtrudeImg);
+    propertyExtrudeButton.addEventListener("click", e => {
+
+      console.log("extrude");
+
+    });
+
     propertyHeader.appendChild(propertyCheckBox);
+    //propertyHeader.appendChild(propertyExtrudeButton);
     propertyHeader.appendChild(propertyLabel);
     propertyDiv.appendChild(propertyHeader);
     docContent.appendChild(propertyDiv);

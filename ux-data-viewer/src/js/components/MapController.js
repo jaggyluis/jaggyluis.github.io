@@ -11,7 +11,7 @@ class MapController {
     this.keys = [];
     this.loading = false;
     this.container = map._container;
-    this.envelope = null;
+    this.envelope = [];
 
     var self = this;
 
@@ -29,35 +29,13 @@ class MapController {
 
     console.log(map);
 
-    var loader = document.createElement("div");
-    loader.id = "overlay";
-    loader.classList.add("collapsed");
-    loader.innerHTML = '<img src="img/loadloop.gif" id="loader"></img>';
-    self.container.appendChild(loader);
-
-    self.loader = loader;
+    self.loader = document.createElement("div");
+    self.loader.id = "overlay";
+    self.loader.classList.add("collapsed");
+    self.loader.innerHTML = '<img src="img/loadloop.gif" id="loader"></img>';
+    self.container.appendChild(self.loader);
 
     map.on("sourcedata", function(e) {
-
-      // if (allowedLoaders.includes(e.sourceId)) {
-      //   return;
-      // }
-      //
-      // console.log(e);
-      //
-      // self.loading = !e.isSourceLoaded;
-      //
-      // setTimeout(function() { // only use the loader if the loading lasts more than 0.5 sec
-      //
-      //   if (self.loading) {
-      //     loader.classList.remove("collapsed");
-      //   } else {
-      //     if (!loader.classList.contains("collapsed")) {
-      //       loader.classList.add("collapsed");
-      //     }
-      //   }
-      //
-      // }, 500);
 
       setTimeout(() => {
 
@@ -73,19 +51,17 @@ class MapController {
 
         if (self.loading || self.loadingOverride) {
 
-          loader.classList.remove("collapsed");
+          self.loader.classList.remove("collapsed");
 
         } else {
 
-          if (!loader.classList.contains("collapsed")) {
-            loader.classList.add("collapsed");
+          if (!self.loader.classList.contains("collapsed")) {
+            self.loader.classList.add("collapsed");
           }
 
         }
 
       }, 500);
-
-
 
     });
 
@@ -97,56 +73,72 @@ class MapController {
 
     });
 
-    // var draw = new MapboxDraw({
-    //   displayControlsDefault: false,
-    //   controls: {
-    //     polygon: true,
-    //     trash: false
-    //   }
-    // });
-    //
-    // self.draw = draw;
-    // map.addControl(draw);
-    //
-    // //map.on('draw.create', updateArea);
-    // //map.on('draw.delete', updateArea);
-    // //map.on('draw.update', updateArea);
-    //
-    // //https://stackoverflow.com/questions/51073328/allow-drawing-only-one-shape-at-a-time-with-mapbox-gl-draw
-    // map.on('draw.modechange', (e) => {
-    //   const data = draw.getAll();
-    //   if (draw.getMode() == 'draw_polygon') {
-    //     var pids = []
-    //
-    //     // ID of the added template empty feature
-    //     const lid = data.features[data.features.length - 1].id
-    //
-    //     data.features.forEach((f) => {
-    //       if (f.geometry.type === 'Polygon' && f.id !== lid) {
-    //         pids.push(f.id)
-    //       }
-    //     })
-    //     draw.delete(pids)
-    //   }
-    // });
+    var draw = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        polygon: true,
+        trash: true
+      },
+      styles : buildMapBoxDrawLayerStyle()
+    });
 
+    self.map.dragRotate.disable();
+    self.draw = draw;
+
+    //map.addControl(new mapboxgl.NavigationControl());
+    //map.addControl(new mapboxgl.ScaleControl());
+
+    var controls = new SSController();
+    controls.setMapController(self);
+    self.controls = controls;
+
+    map.addControl(controls);
+    map.addControl(draw);
+
+    function update(e) {
+
+      self.envelope = self.draw.getAll().features;
+
+      Object.keys(self.sources).forEach(key => {
+
+        var source = self.sources[key];
+        var active = source.active;
+
+        source.brushed = [];
+
+        self.updateFilterLayerController(key);
+        self.updateFilterLayer(key, true);
+        self.updateFilterLayerPropertyStops(key);
+        self.updateFilter(key);
+
+        if (active != null) {
+          self.selectFilterLayerProperty(key, active);
+        }
+
+      });
+
+      self.updateLegend();
+
+    };
+
+    map.on('draw.create', update);
+    map.on('draw.delete', update);
+    map.on('draw.update', update);
   }
 
   setLoading(loading) {
 
     this.loading = loading;
+    this.loadingOverride = loading;
 
     if (loading) {
-      if (!loader.classList.contains("collapsed")) {
-        loader.classList.add("collapsed");
+
+      if (!self.loader.classList.contains("collapsed")) {
+        self.loader.classList.add("collapsed");
       }
 
-      this.loadingOverride = loading;
-
     } else {
-      loader.classList.remove("collapsed");
-
-      this.loadingOverride = loading;
+      self.loader.classList.remove("collapsed");
     }
   }
 
@@ -170,12 +162,12 @@ class MapController {
 
       var propertyStops = [];
       var propertyInterval = wrangled.properties[property];
-      var propertyRange = propertyInterval[1] - propertyInterval[0];
+      var propertyRange = [propertyInterval[0], propertyInterval[1]];
       var propertyStyle = style(property);
       var propertyStop = propertyStyle.length;
 
       for (var i = 0; i< propertyStop; i++) {
-        propertyStops.push([propertyInterval[0] + ( i * (propertyRange / propertyStop) ), propertyStyle[i]]);
+        propertyStops.push([propertyInterval[0] + ( i * ((propertyRange[1]-propertyRange[0]) / propertyStop) ), propertyStyle[i]]);
       }
 
       return {
@@ -201,12 +193,52 @@ class MapController {
     self.sources[key].hidden = [];
     self.sources[key].popups = [];
     self.sources[key].selected = [];
+    self.sources[key].layers = {};
     self.sources[key].filters = {
-      default : () => { return false; }
+      default :   (value) => { return false; },
+      envelope :  (value) => {
+
+          if (self.envelope.length > 0) {
+
+            if (!value.lat || !value.lon) { // NOTE - for legend or bad values ---
+              return false;
+            }
+
+            var pt = turf.point([value.lon, value.lat]);
+            var filter = true;
+
+            for (var i = 0; i< self.envelope.length; i++) {
+              if (turf.booleanPointInPolygon(pt, self.envelope[i])) {
+                filter = false;
+                break;
+              }
+            }
+
+            return filter;
+
+          }
+
+          return false;
+      }
+
     };
 
     self.sources[key].values.forEach(d => { // NOTE - adds all the geometry at the beginning ---
-      self.sources[key].filtered.push(d._id);
+
+      var keep = true;
+
+      Object.keys(self.sources[key].filters).forEach(filter => {
+
+          if (self.sources[key].filters[filter](d)) {
+            keep = false;
+          }
+      });
+
+      if (keep) {
+        self.sources[key].filtered.push(d._id);
+      }
+
+      //self.sources[key].filtered.push(d._id);
     });
 
     var properties = Object.keys(self.sources[key].properties);
@@ -244,10 +276,7 @@ class MapController {
       }
 
       self.sources[key].states[property] = propertyState;
-
-      //if (!(property === "_id")) { // NOTE - set the baseline parcoords to just be _id ---
-        self.sources[key].hidden.push(property);
-      //}
+      self.sources[key].hidden.push(property);
 
     });
 
@@ -265,35 +294,6 @@ class MapController {
       type: 'geojson',
       data
     });
-
-    // if (self.envelope == null) {
-    //   self.envelope = turf.envelope(data);
-    //   self.draw.add(self.envelope);
-    //
-    // } else {
-    //
-    //     // const all = self.draw.getAll();
-    //     // const pids = [];
-    //     //
-    //     // all.features.forEach((f) => {
-    //     //   pids.push(f.id)
-    //     // });
-    //     //
-    //     // self.draw.delete(pids)
-    //     //
-    //     // self.envelope = turf.envelope(data);
-    //     // self.draw.add(self.envelope);
-    //
-    //     const all = self.draw.getAll();
-    //     all.features.push(turf.envelope(data));
-    //
-    //     self.envelope = turf.envelope(all);
-    //     self.draw.add(self.envelope);
-    // }
-
-
-
-
   }
 
   getSourceKeys() {
@@ -393,23 +393,38 @@ class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        self.map.addLayer( buildGeoJsonPolygonBaseLayer(key), firstSymbolId );
+        var layer = buildGeoJsonPolygonBaseLayer(key, self.sources[key].filtered);
+        var id = layer.id;
+
+        self.sources[key].layers.base = id;
+
+        self.map.addLayer(layer , firstSymbolId );
 
         break;
 
       case "LineString":
       case "MultiLineString":
 
-        self.map.addLayer( buildGeoJeonLineStringBaseLayer(key), firstSymbolId );
+        var layer = buildGeoJeonLineStringBaseLayer(key, self.sources[key].filtered);
+        var id = layer.id;
+
+        self.sources[key].layers.base = id;
+
+        self.map.addLayer(layer , firstSymbolId );
 
         break;
 
       case "Point":
 
-        self.map.addLayer( buildGeoJsonPointBaseLayer(key), firstSymbolId );
+        var layer = buildGeoJsonPointBaseLayer(key, self.sources[key].filtered);
+        var id = layer.id;
+
+        self.sources[key].layers.base = id;
+
+        self.map.addLayer(layer , firstSymbolId );
 
         // point always on top ---
-        self.map.moveLayer( key + '-base');
+        self.map.moveLayer(id);
 
         break;
 
@@ -447,37 +462,12 @@ class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        var layer =  buildGeoJsonPolygonFilterLayer(key, self.sources[key].filtered);
-        var flat = false;
+        var layer =  buildGeoJsonPolygonFilterLayer(key, self.sources[key].filtered, !self.controls.isExtruded(), self.sources[key].height);
+        var id = layer.id;
+
+        self.sources[key].layers.filter = id;
 
         self.map.addLayer( layer, firstSymbolId );
-
-        self.map.on("rotate", function(e) {
-
-          if (self.map.getPitch() < 15) {
-
-            if (!flat) {
-
-              console.log("make flat");
-              self.map.setPaintProperty(layer.id, "fill-extrusion-height", 0);
-
-            }
-
-            flat = true;
-
-          } else {
-
-            if (flat) {
-
-              console.log("make extruded");
-              self.map.setPaintProperty(layer.id, "fill-extrusion-height", ["get", source.height]);
-            }
-
-            flat = false;
-
-          }
-
-        });
 
         break;
 
@@ -485,6 +475,9 @@ class MapController {
       case "MultiLineString":
 
         var layer =  buildGeoJsonLineStringFilterLayer(key, self.sources[key].filtered);
+        var id = layer.id;
+
+        self.sources[key].layers.filter = id;
 
         self.map.addLayer( layer, firstSymbolId );
 
@@ -493,11 +486,12 @@ class MapController {
       case "Point":
 
         var layer = buildGeoJsonPointFilterLayer(key, self.sources[key].filtered);
+        var id = layer.id;
+
+        self.sources[key].layers.filter = id;
 
         self.map.addLayer( layer, firstSymbolId );
-
-        // point always on top ---
-        self.map.moveLayer( layer.id );
+        self.map.moveLayer( layer.id ); // point always on top ---
 
         break;
 
@@ -1196,6 +1190,7 @@ class MapController {
 
     //console.log(self.map.getStyle().layers);
 
+    self.map.setFilter(key + '-base', filter); // NOTE - trying to speed it up ---
     self.map.setFilter(key + '-filter', filter);
 
     var popups = source.popups;
@@ -1368,6 +1363,8 @@ class MapController {
       other.classList.remove("selected");
     });
 
+    source.coords.selection.selectAll("foreignObject").remove();
+
     source.coords.selection.selectAll(".label")[0].forEach(function(l) {
 
         if (l.hasEventListener) {
@@ -1412,8 +1409,67 @@ class MapController {
        return;
      }
 
+    source.coords.selection.selectAll("foreignObject").remove();
+
+    var form = d3.select(l.parentNode.parentNode).append("foreignObject");
+    var input = form
+        .attr({
+            "x": -50,
+            "y": -50,
+            "height": 20,
+            "width": 100,
+            //"style" : "border : 1px solid grey; "
+        })
+        .append("xhtml:div")
+        .attr("class", "axis-menu")[0][0];
+
+    var extrudeImg = document.createElement("img");
+    extrudeImg.classList.add("axis-menu-img");
+    extrudeImg.src = "img/cube-icon.png";
+
+    var extrudeButton = document.createElement("div");
+    extrudeButton.classList.add("axis-menu-item");
+    extrudeButton.appendChild(extrudeImg);
+
+    if (!source.types.includes("Polygon") && !source.types.includes("MultiPolygon")) {
+      extrudeImg.classList.add("disabled");
+    } else {
+      extrudeButton.title = "Extrude";
+      extrudeButton.addEventListener("click", e => {
+        console.log("extrude");
+      });
+    }
+
+    var reverseImg = document.createElement("img");
+    reverseImg.classList.add("axis-menu-img");
+    reverseImg.src = "img/split-icon.png";
+
+    var reverseButton = document.createElement("div");
+    reverseButton.classList.add("axis-menu-item");
+    reverseButton.title = "Reverse";
+    reverseButton.appendChild(reverseImg);
+    reverseButton.addEventListener("click", e => {
+      console.log("reverse");
+    });
+
+    var colorImg = document.createElement("img");
+    colorImg.classList.add("axis-menu-img");
+    colorImg.src = "img/edit-icon.png";
+
+    var colorButton = document.createElement("div");
+    colorButton.classList.add("axis-menu-item");
+    colorButton.title = "Color";
+    colorButton.appendChild(colorImg);
+    colorButton.addEventListener("click", e => {
+      console.log("color");
+    });
+
+    input.appendChild(extrudeButton);
+    input.appendChild(reverseButton);
+    input.appendChild(colorButton);
+
     var color = "#000000";
-    var interval = state.propertyClamp !== undefined && state.propertyClamp !== null ? state.propertyClamp : state.propertyInterval;
+    var interval = state.propertyClamp !== undefined && state.propertyClamp !== null ? state.propertyClamp : state.propertyRange;
     var func = d3.scale.quantile().domain(interval).range(state.propertyStyle);
 
     if (state.propertyType === "string") {
@@ -1607,20 +1663,38 @@ class MapController {
               nstops.push([i, stops[j][1]]);
           }
 
+          state.propertyRange = [state.propertyClamp[0], state.propertyClamp[1]];
           state.propertyStops = nstops;
 
         } else {
 
           var nstops = [];
+          var nMin = null;
+          var nMax = null;
+
+          if (source.coords.data().length > 0) {
+            source.coords.data().forEach(d => {
+              if (nMin === null || d[property] < nMin) {
+                nMin = d[property];
+              }
+              if (nMax === null || d[property] > nMax) {
+                nMax = d[property];
+              }
+            })
+          } else {
+            nMin = state.propertyInterval[0];
+            nMax = state.propertyInterval[1];
+          }
 
           for (
-            var i = state.propertyInterval[0], j=0;
+            var i = nMin, j=0;
             j < state.propertyStops.length;
-            i += (state.propertyInterval[1] - state.propertyInterval[0]) / state.propertyStops.length, j++) {
+            i += (nMax - nMin) / state.propertyStops.length, j++) {
 
               nstops.push([i, stops[j][1]]);
           }
 
+          state.propertyRange = [nMin, nMax];
           state.propertyStops = nstops;
         }
 
@@ -1709,8 +1783,6 @@ class MapController {
       //}
 
     } else if (state.propertyType === "string") {
-
-
 
       state.propertyStops.forEach((s, i) => {
 
@@ -1993,13 +2065,13 @@ function detectTypes(data) {
 // initial layer states ---
 
 
-function buildGeoJsonPolygonBaseLayer(source) {
+function buildGeoJsonPolygonBaseLayer(source, filter) {
   return {
 
    id : source + '-base',
    source : source,
    type: 'line',
-   tolerance : 0,
+   filter : filter,
    minzoom: 7,
    //maxzoom: 18,
    paint: {
@@ -2040,13 +2112,12 @@ function buildGeoJsonPolygonBaseLayer(source) {
  };
 };
 
-function buildGeoJsonPolygonFilterLayer(source, filter) {
+function buildGeoJsonPolygonFilterLayer(source, filter, flat, heightProperty) {
   return {
 
    id : source + '-filter',
    source : source,
    type: 'fill-extrusion',
-   tolerance : 0,
    filter : filter,
    paint: {
      'fill-extrusion-color':  [
@@ -2057,7 +2128,7 @@ function buildGeoJsonPolygonFilterLayer(source, filter) {
                "#000000",
                "#616161"
                ],
-     'fill-extrusion-height': 0,
+     'fill-extrusion-height': flat ? 0 : ["get", heightProperty],
      'fill-extrusion-base': 0,
      'fill-extrusion-opacity': 0.8,
      'fill-extrusion-vertical-gradient' : true
@@ -2066,13 +2137,14 @@ function buildGeoJsonPolygonFilterLayer(source, filter) {
  };
 };
 
-function buildGeoJeonLineStringBaseLayer(source) {
+function buildGeoJeonLineStringBaseLayer(source, filter) {
   return  {
 
       id : source + '-base',
       source : source,
       type: 'line',
       minzoom: 7,
+      filter : filter,
       //maxzoom: 18,
       paint: {
         'line-blur': 0.5,
@@ -2126,13 +2198,14 @@ function buildGeoJsonLineStringFilterLayer(source, filter) {
  };
 }
 
-function buildGeoJsonPointBaseLayer(source) {
+function buildGeoJsonPointBaseLayer(source, filter) {
   return {
 
     id : source + '-base',
     source : source,
     type : "circle",
     minzoom : 10,
+    filter : filter,
     paint : {
         "circle-radius":  [
             "interpolate",
@@ -2189,6 +2262,237 @@ function buildGeoJsonPointFilterLayer(source, filter) {
     }
 
   };
+}
+
+function buildMapBoxDrawLayerStyle() {
+  return [{
+      'id': 'gl-draw-polygon-fill-inactive',
+      'type': 'fill',
+      'filter': ['all', ['==', 'active', 'false'],
+          ['==', '$type', 'Polygon'],
+          ['!=', 'mode', 'static']
+      ],
+      'paint': {
+          'fill-color': 'lightgrey', //#3bb2d0',
+          'fill-outline-color': 'lightgrey', //#3bb2d0',
+          'fill-opacity': 0, //0.1
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-fill-active',
+      'type': 'fill',
+      'filter': ['all', ['==', 'active', 'true'],
+          ['==', '$type', 'Polygon']
+      ],
+      'paint': {
+          'fill-color': 'grey', //'#fbb03b',
+          'fill-outline-color': '#fbb03b',
+          'fill-opacity': 0.1
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-midpoint',
+      'type': 'circle',
+      'filter': ['all', ['==', '$type', 'Point'],
+          ['==', 'meta', 'midpoint']
+      ],
+      'paint': {
+          'circle-radius': 3,
+          'circle-color': 'grey', //'#fbb03b',
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-stroke-inactive',
+      'type': 'line',
+      'filter': ['all', ['==', 'active', 'false'],
+          ['==', '$type', 'Polygon'],
+          ['!=', 'mode', 'static']
+      ],
+      'layout': {
+          'line-cap': 'round',
+          'line-join': 'round'
+      },
+      'paint': {
+          'line-color': 'lightgrey', //#3bb2d0',
+          'line-width': 2
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-stroke-active',
+      'type': 'line',
+      'filter': ['all', ['==', 'active', 'true'],
+          ['==', '$type', 'Polygon']
+      ],
+      'layout': {
+          'line-cap': 'round',
+          'line-join': 'round'
+      },
+      'paint': {
+          'line-color': 'grey', //'#fbb03b',
+          'line-dasharray': [0.2, 2],
+          'line-width': 2
+      }
+  },
+  {
+      'id': 'gl-draw-line-inactive',
+      'type': 'line',
+      'filter': ['all', ['==', 'active', 'false'],
+          ['==', '$type', 'LineString'],
+          ['!=', 'mode', 'static']
+      ],
+      'layout': {
+          'line-cap': 'round',
+          'line-join': 'round'
+      },
+      'paint': {
+          'line-color': 'lightgrey', //#3bb2d0',
+          'line-width': 2
+      }
+  },
+  {
+      'id': 'gl-draw-line-active',
+      'type': 'line',
+      'filter': ['all', ['==', '$type', 'LineString'],
+          ['==', 'active', 'true']
+      ],
+      'layout': {
+          'line-cap': 'round',
+          'line-join': 'round'
+      },
+      'paint': {
+          'line-color': 'grey', //'#fbb03b',
+          'line-dasharray': [0.2, 2],
+          'line-width': 2
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive',
+      'type': 'circle',
+      'filter': ['all', ['==', 'meta', 'vertex'],
+          ['==', '$type', 'Point'],
+          ['!=', 'mode', 'static']
+      ],
+      'paint': {
+          'circle-radius': 5,
+          'circle-color': '#fff'
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-and-line-vertex-inactive',
+      'type': 'circle',
+      'filter': ['all', ['==', 'meta', 'vertex'],
+          ['==', '$type', 'Point'],
+          ['!=', 'mode', 'static']
+      ],
+      'paint': {
+          'circle-radius': 3,
+          'circle-color': 'grey', //'#fbb03b',
+      }
+  },
+  {
+      'id': 'gl-draw-point-point-stroke-inactive',
+      'type': 'circle',
+      'filter': ['all', ['==', 'active', 'false'],
+          ['==', '$type', 'Point'],
+          ['==', 'meta', 'feature'],
+          ['!=', 'mode', 'static']
+      ],
+      'paint': {
+          'circle-radius': 5,
+          'circle-opacity': 1,
+          'circle-color': '#fff'
+      }
+  },
+  {
+      'id': 'gl-draw-point-inactive',
+      'type': 'circle',
+      'filter': ['all', ['==', 'active', 'false'],
+          ['==', '$type', 'Point'],
+          ['==', 'meta', 'feature'],
+          ['!=', 'mode', 'static']
+      ],
+      'paint': {
+          'circle-radius': 3,
+          'circle-color': 'lightgrey', //#3bb2d0',
+      }
+  },
+  {
+      'id': 'gl-draw-point-stroke-active',
+      'type': 'circle',
+      'filter': ['all', ['==', '$type', 'Point'],
+          ['==', 'active', 'true'],
+          ['!=', 'meta', 'midpoint']
+      ],
+      'paint': {
+          'circle-radius': 7,
+          'circle-color': '#fff'
+      }
+  },
+  {
+      'id': 'gl-draw-point-active',
+      'type': 'circle',
+      'filter': ['all', ['==', '$type', 'Point'],
+          ['!=', 'meta', 'midpoint'],
+          ['==', 'active', 'true']
+      ],
+      'paint': {
+          'circle-radius': 5,
+          'circle-color': 'grey', //'#fbb03b',
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-fill-static',
+      'type': 'fill',
+      'filter': ['all', ['==', 'mode', 'static'],
+          ['==', '$type', 'Polygon']
+      ],
+      'paint': {
+          'fill-color': '#404040',
+          'fill-outline-color': '#404040',
+          'fill-opacity': 0.1
+      }
+  },
+  {
+      'id': 'gl-draw-polygon-stroke-static',
+      'type': 'line',
+      'filter': ['all', ['==', 'mode', 'static'],
+          ['==', '$type', 'Polygon']
+      ],
+      'layout': {
+          'line-cap': 'round',
+          'line-join': 'round'
+      },
+      'paint': {
+          'line-color': '#404040',
+          'line-width': 2
+      }
+  },
+  {
+      'id': 'gl-draw-line-static',
+      'type': 'line',
+      'filter': ['all', ['==', 'mode', 'static'],
+          ['==', '$type', 'LineString']
+      ],
+      'layout': {
+          'line-cap': 'round',
+          'line-join': 'round'
+      },
+      'paint': {
+          'line-color': '#404040',
+          'line-width': 2
+      }
+  },
+  {
+      'id': 'gl-draw-point-static',
+      'type': 'circle',
+      'filter': ['all', ['==', 'mode', 'static'],
+          ['==', '$type', 'Point']
+      ],
+      'paint': {
+          'circle-radius': 5,
+          'circle-color': '#404040'
+      }
+  }];
 }
 
 function style(property) {
@@ -2263,41 +2567,55 @@ function wrangle(data) {
 
       f.id = f.properties["_id"]; // geojson source specification ---
 
-      // NOTE - for unit testing on all types ---
+      //NOTE - for unit testing on all types ---
 
-      // var lat = 0;
-      // var lon = 0;
-      //
-      // switch (type) {
-      //
-      //   case "Polygon":
-      //
-      //     lon = f.geometry.coordinates[0][0][0];
-      //     lat = f.geometry.coordinates[0][0][1];
-      //
-      //     break;
-      //
-      //   case "LineString":
-      //
-      //     lon = f.geometry.coordinates[0][0];
-      //     lat = f.geometry.coordinates[0][1];
-      //
-      //     break;
-      //
-      //   case "Point":
-      //
-      //     lon = f.geometry.coordinates[0];
-      //     lat = f.geometry.coordinates[1];
-      //
-      //     break;
-      //
-      //   default:
-      //     break;
-      //
-      // }
-      //
-      // f.properties['lat'] = lat;
-      // f.properties['lon'] = lon;
+      var lat = 0;
+      var lon = 0;
+
+      switch (type) {
+
+        case "MultiPolygon" :
+
+          lon = f.geometry.coordinates[0][0][0][0];
+          lat = f.geometry.coordinates[0][0][0][1];
+
+          break;
+
+        case "MultiLineString" :
+
+          lon = f.geometry.coordinates[0][0][0];
+          lat = f.geometry.coordinates[0][0][1];
+
+          break;
+
+        case "Polygon":
+
+          lon = f.geometry.coordinates[0][0][0];
+          lat = f.geometry.coordinates[0][0][1];
+
+          break;
+
+        case "LineString":
+
+          lon = f.geometry.coordinates[0][0];
+          lat = f.geometry.coordinates[0][1];
+
+          break;
+
+        case "Point":
+
+          lon = f.geometry.coordinates[0];
+          lat = f.geometry.coordinates[1];
+
+          break;
+
+        default:
+          break;
+
+      }
+
+      f.properties['lat'] = lat;
+      f.properties['lon'] = lon;
 
       Object.keys(f.properties).forEach(k => {
 
