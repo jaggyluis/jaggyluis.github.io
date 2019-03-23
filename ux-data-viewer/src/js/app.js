@@ -1,4 +1,17 @@
 
+// utils ---
+
+// older browsers
+if (!('remove' in Element.prototype)) {
+  Element.prototype.remove = function() {
+    if (this.parentNode) {
+      this.parentNode.removeChild(this);
+    }
+  };
+}
+
+// map setup ---
+
 mapboxgl.accessToken = 'pk.eyJ1IjoiamFnZ3lsdWlzIiwiYSI6ImNqcmdrdWRyNzFlenQ0M3BvODZ6ZjJwcnUifQ.T8htDIqiD0Vy8WOEE7ZssQ';
 
 const config = {
@@ -18,73 +31,56 @@ const map = new mapboxgl.Map({
 
 const mapController = new MapController(map);
 
+// interface setup ---
+
 const interface = document.getElementById("interface");
 const left = document.getElementById("left");
 const leftHeader = document.getElementById("left-header");
 const lscroll = document.getElementById("left-scroll-pane");
+
 const bottom = document.getElementById("bottom");
+const bottomHeader = document.getElementById("bottom-header");
 const bscroll = document.getElementById("bottom-scroll-pane");
+
 const legend = document.getElementById("legend");
 
-const source = {};
+mapController.addLegend(legend);
 
-var down = false;
-var top = left.clientHeight;
-
-// older browsers
-if (!('remove' in Element.prototype)) {
-  Element.prototype.remove = function() {
-    if (this.parentNode) {
-      this.parentNode.removeChild(this);
-    }
-  };
-}
-
-function updateInterface(e) {
-  bottom.style.height = interface.clientHeight - (left.clientHeight + 36) + "px";
-
-  legend.style.bottom = bottom.clientHeight + 10 + "px";
-  legend.style.left = left.clientWidth + 10 + "px";
-  legend.style.width = interface.clientWidth - left.clientWidth  - 42 + "px";
-
-  //left._width = null;
-}
-
-left.addEventListener("mousedown", e => {
-  down = true;
-});
-
-// leftHeader.addEventListener("click", e => {
-//
-//   if (left._width == undefined || left._width == null) {
-//
-//     left._width = left.style.width;
-//     left.style.width = "0px"
-//
-//   } else {
-//
-//     left.style.width = left._width;
-//     left._width = null;
-//   }
-//
-// ;
-// });
-
-document.addEventListener("mousemove", e => {
-  if (down) {
-    updateInterface(e);
+leftHeader.addEventListener("click", e => {
+  if (Object.keys(mapController.sources).length === 0) {
+    return;
   }
+
+  lscroll.classList.toggle("collapsed");
 });
 
-document.addEventListener("mouseup", e => {
-  if (down) {
-    down = false;
+bottomHeader.addEventListener("click", e => {
+  if (!areFiltersPresent()) {
+    return;
   }
-});
-
-window.addEventListener("resize", e => {
-  updateInterface(e);
+  bscroll.classList.toggle("collapsed");
 })
+
+function areFiltersPresent() {
+
+  var filters = document.getElementsByClassName("document-filter-button");
+
+  for (var i = 0; i< filters.length; i++) {
+    if (filters[i].selected) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// interaction setup ---
+
+// high dpi - - https://stackoverflow.com/questions/42483449/mapbox-gl-js-export-map-to-png-or-pdf
+// var dpi = 300;
+// Object.defineProperty(window, 'devicePixelRatio', {
+//     get: function() {return dpi / 96}
+// });
 
 var hiddenProperties = [
   "_id",
@@ -116,10 +112,11 @@ var hiddenProperties = [
 var schemeBase = {
   id : "base",
   data : {
-    buildings : "data/syd/190315/buildings_existing.geojson",
-    openSpaces : "data/syd/190315/public_open_spaces.geojson",
-    blocks :  "data/syd/blocks.geojson",
-    points :  "data/syd/points.geojson"
+    buildings :   "data/syd/190315/buildings_existing.geojson",
+    openSpaces :  "data/syd/190315/public_open_spaces.geojson",
+    blocks :      "data/syd/blocks.geojson",
+    points :      "data/syd/points.geojson",
+    ways :        "data/syd/ways.geojson"
   }
 }
 
@@ -129,7 +126,7 @@ var scheme1m = {
     blocks :      "data/syd/190315/blocks_pr_1mil.geojson",
     buildings :   "data/syd/190315/buildings_pr_1mil.geojson",
     parks :       "data/syd/190315/parks_pr_1mil.geojson",
-    ways : "data/syd/190315/ways_1mil_gc.geojson",
+    ways :        "data/syd/190315/ways_1mil_gc.geojson",
   }
 }
 
@@ -139,7 +136,7 @@ var scheme700k = {
     blocks :      "data/syd/190315/blocks_pr_700k.geojson",
     buildings :   "data/syd/190315/buildings_pr_700k.geojson",
     parks :       "data/syd/190315/parks_pr_700k.geojson",
-    ways : "data/syd/190315/ways_700k_gc.geojson",
+    ways :        "data/syd/190315/ways_700k_gc.geojson",
   }
 }
 
@@ -148,8 +145,6 @@ var schemes = [
   scheme1m,
   scheme700k
 ]
-
-updateInterface({target : null});
 
 map.on("load", function() {
 
@@ -182,8 +177,6 @@ map.on("load", function() {
 
 });
 
-
-
 drop(document.getElementsByTagName('body')[0], ['geojson'], (fileData, fileName) => {
 
   loadDataLayer(JSON.parse(fileData), fileName.split(".")[0]);
@@ -194,68 +187,238 @@ function loadDataLayer(data, label, open) {
 
   mapController.addSource(label, data);
   mapController.addLayer(label);
+  mapController.toggleLayer(label, false); // NOTE - init off
+
+  // build the box first ---
 
   var box = document.createElement("div");
   box.classList.add("box");
   box.classList.add("document");
   bscroll.appendChild(box);
 
+  var boxHeader = document.createElement("div");
+  boxHeader.classList.add("box-header");
+  boxHeader.id = label + "-box-header"
+
+  box.appendChild(boxHeader);
+
   var boxLabel = document.createElement("div");
   boxLabel.classList.add("box-label");
-  boxLabel.id = label + "-box";
-  boxLabel.innerHTML = label;
-  box.appendChild(boxLabel);
+  boxLabel.id = label + "-box-label";
+  boxLabel.innerHTML = " - " + label;
+
+  boxHeader.appendChild(boxLabel);
+
+  var boxStatus = document.createElement("div");
+  boxStatus.classList.add("box-status");
+  boxStatus.id = label + "-box-status";
+  boxStatus.innerHTML = "no properties selected";
+
+  boxHeader.appendChild(boxStatus);
+
+  var downloadImg = document.createElement("img");
+  downloadImg.classList.add("box-menu-img");
+  downloadImg.src = "img/export-icon.png";
+
+  var downloadButton = document.createElement("div");
+  downloadButton.classList.add("box-menu-item");
+  downloadButton.title = "Download";
+  downloadButton.appendChild(downloadImg);
+  downloadButton.addEventListener("click", e => {
+    console.log("download");
+
+    var data = mapController.getSourceData(label).slice();
+    var properties = mapController.getSourceKeyProperties(label, true, false).slice();
+    properties.push("_id");
+
+    data.sort(function(a,b) {
+      return a._id - b._id;
+    });
+
+    exportObjArrayToCSV(label + "_data", data, properties);
+  });
+
+  boxHeader.appendChild(downloadButton);
+
+  var sheetImg = document.createElement("img");
+  sheetImg.classList.add("box-menu-img");
+  sheetImg.src = "img/sheet-icon.png";
+
+  var sheetButton = document.createElement("div");
+  sheetButton.classList.add("box-menu-item");
+  sheetButton.title = "Sheet";
+  sheetButton.appendChild(sheetImg);
+
+  boxHeader.appendChild(sheetButton);
+
+  var filterImg = document.createElement("img");
+  filterImg.classList.add("box-menu-img");
+  filterImg.classList.add("selected");
+  filterImg.style = " transform: rotate(90deg); ";
+  filterImg.src = "img/options-icon.png";
+
+  var filterButton = document.createElement("div");
+  filterButton.classList.add("box-menu-item");
+  filterButton.title = "Filter";
+  filterButton.appendChild(filterImg);
+
+  boxHeader.appendChild(filterButton);
 
   var boxContent = document.createElement("div");
   boxContent.classList.add("box-content");
-
   boxContent.id = label + "-box-content";
+
   box.appendChild(boxContent);
 
   var boxCoords = document.createElement("div");
   boxCoords.classList.add("box-item");
   boxCoords.id = label + "-coords";
   boxCoords.style.width = "100%";
+
   boxContent.appendChild(boxCoords);
 
   mapController.addFilterLayerController(label, boxCoords);
+
+  boxLabel.addEventListener("click", e=> {
+
+    if (boxContent.classList.contains('collapsed')) {
+
+      boxContent.classList.remove("collapsed");
+      boxLabel.innerHTML = " - " + label;
+
+    } else {
+
+      boxContent.classList.add("collapsed");
+      boxLabel.innerHTML = " + " + label;
+    }
+  });
+
+  // var boxSheet = document.createElement("div");
+  // boxSheet.classList.add("box-item");
+  // boxSheet.id = label + "-sheet";
+  // boxContent.appendChild(boxSheet);
+  //
+  // mapController.addFilterLayerSheet(label, boxSheet);
+
   boxContent.classList.add("collapsed"); // build parcoords then collapse ---
+  box.classList.add("collapsed");
+
+  // end building the box ---
 
   var doc = document.createElement("div");
   doc.classList.add("document");
 
+  var docHeader = document.createElement("div");
+  docHeader.classList.add("document-header");
+  docHeader.id = label + "-document-header";
+
+  doc.appendChild(docHeader);
+
+  var docCheckBoxImg = document.createElement("img");
+  docCheckBoxImg.classList.add("document-menu-img");
+  //docViewImg.classList.add("selected");
+  docCheckBoxImg.src = "img/toggle-icon.png";
+
+  var docCheckBoxButton = document.createElement("div");
+  docCheckBoxButton.classList.add("document-menu-item");
+  docCheckBoxButton.classList.add("document-view-button");
+  docCheckBoxButton.selected = false;
+  docCheckBoxButton.appendChild(docCheckBoxImg);
+
+  //docHeader.appendChild(docCheckBoxButton);
+
   var docLabel = document.createElement("div");
   docLabel.classList.add("document-label");
-  docLabel.id = label + "-label";
+  docLabel.id = label + "-document-label";
   docLabel.innerHTML = " - " + label;
+
+  docHeader.appendChild(docLabel);
+
+  var docViewImg = document.createElement("img");
+  docViewImg.classList.add("document-menu-img");
+  //docViewImg.classList.add("selected");
+  docViewImg.src = "img/view-icon.png";
+
+  var docViewButton = document.createElement("div");
+  docViewButton.classList.add("document-menu-item");
+  docViewButton.classList.add("document-view-button");
+  docViewButton.title = "View";
+  docViewButton.selected = false;
+  docViewButton.appendChild(docViewImg);
+
+  docHeader.appendChild(docViewButton);
+
+  var docFilterImg = document.createElement("img");
+  docFilterImg.classList.add("document-menu-img");
+  docFilterImg.style = " transform: rotate(90deg); ";
+  docFilterImg.src = "img/options-icon.png";
+
+  var docFilterButton = document.createElement("div");
+  docFilterButton.classList.add("document-menu-item");
+  docFilterButton.classList.add("document-filter-button");
+  docFilterButton.title = "Filter";
+  docFilterButton.selected = false;
+  docFilterButton.appendChild(docFilterImg);
+
+  docHeader.appendChild(docFilterButton);
 
   var docContent = document.createElement("div");
   docContent.classList.add("document-content");
-  docContent.id = label + "-content";
+  docContent.id = label + "-document-content";
 
-  doc.appendChild(docLabel);
   doc.appendChild(docContent);
+
   lscroll.appendChild(doc);
 
-  mapController.addLegend(legend);
+  docLabel.addEventListener("click", e=> {
 
-  docLabel.addEventListener("click", e => {
+    if (docContent.classList.contains('collapsed')) {
 
-      if (docContent.classList.contains('collapsed')) {
+      docContent.classList.remove("collapsed");
+      docLabel.innerHTML = " - " + label;
 
-        docContent.classList.remove("collapsed");
-        docLabel.innerHTML = " - " + label;
-        box.classList.remove("collapsed");
+    } else {
 
-        mapController.toggleLayer(label, true);
+      docContent.classList.add("collapsed");
+      docLabel.innerHTML = " + " + label;
+    }
+  });
+
+  docViewButton.addEventListener("click", e => {
+
+      if (docViewImg.classList.contains('selected')) {
+
+        docViewButton.selected = false;
+
+        docViewImg.classList.remove("selected");
+        mapController.toggleLayer(label, false);
 
       } else {
 
-        docContent.classList.add("collapsed");
-        docLabel.innerHTML = " + " + label;
+        docViewButton.selected = true;
+
+        docViewImg.classList.add("selected");
+        mapController.toggleLayer(label, true); // move this to new button ---
+      }
+  });
+
+  docFilterButton.addEventListener("click", e => {
+
+      if (docFilterImg.classList.contains('selected')) {
+
+        docFilterButton.selected = false;
+
+        docFilterImg.classList.remove("selected");
         box.classList.add("collapsed");
 
-        mapController.toggleLayer(label, false);
+
+      } else {
+
+        docFilterButton.selected = true;
+
+        docFilterImg.classList.add("selected");
+        box.classList.remove("collapsed");
+
       }
   });
 
@@ -274,7 +437,6 @@ function loadDataLayer(data, label, open) {
     propertyDiv.classList.add("document-item");
 
     if (hiddenProperties.includes(property)) {
-      //console.log("hide : " + property );
       propertyDiv.classList.add("collapsed");
     }
 
@@ -373,9 +535,11 @@ function loadDataLayer(data, label, open) {
       if (allUnchecked) {
         if (!boxContent.classList.contains("collapsed")) {
           boxContent.classList.add("collapsed");
+          boxStatus.innerHTML = "no properties selected";
         }
       } else {
         boxContent.classList.remove("collapsed");
+        boxStatus.innerHTML = "";
       }
 
     });

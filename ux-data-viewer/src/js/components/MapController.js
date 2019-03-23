@@ -156,6 +156,18 @@ class MapController {
     return true;
   }
 
+  getSourceData(key) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null || source.coords === null) {
+      return [];
+    }
+
+    return source.coords.data();
+  }
+
   addSource(key, data) {
 
     function createPropertyState(property, wrangled) {
@@ -175,7 +187,8 @@ class MapController {
         propertyInterval : propertyInterval,
         propertyRange : propertyRange,
         propertyStyle : propertyStyle,
-        propertyStop : propertyStop
+        propertyStop : propertyStop,
+        propertyReversed : false,
       }
     }
 
@@ -185,7 +198,8 @@ class MapController {
     self.sources[key].source = key;
     self.sources[key].states = {};
     self.sources[key].active = null;
-    self.sources[key].height = "height_m";
+    self.sources[key].height = "height_m"; //"RoofRL";
+    self.sources[key].base = ""; //"FloorRL";
     self.sources[key].visible = true;
     self.sources[key].brushed = [];
     self.sources[key].coords = null;
@@ -304,7 +318,7 @@ class MapController {
     return Object.keys(this.layers);
   }
 
-  getSourceKeyProperties(key) {
+  getSourceKeyProperties(key, active, hidden) {
 
     var self = this;
     var source = self.sources[key];
@@ -314,6 +328,26 @@ class MapController {
     }
 
     var properties = Object.keys(source.properties);
+
+    if (active && hidden) {
+
+    } else if (hidden) {
+
+      properties = source.hidden;
+
+    } else if (active) {
+
+      var _properties = [];
+
+      properties.forEach(property => {
+        if (!source.hidden.includes(property)) {
+          _properties.push(property);
+        }
+      });
+
+      properties = _properties;
+    }
+
     properties.sort();
 
     return properties;
@@ -337,9 +371,8 @@ class MapController {
 
   addLayer(key) {
 
-
     this.addFilterLayer(key);
-    this.addBaseLayer(key);
+    this.addBaseLayer(key); // NOTE - swap this maybe?
   }
 
   toggleLayer(key, visible) {
@@ -384,7 +417,16 @@ class MapController {
     }
 
     if (source.types.length > 1) {
-      alert("geometry layer contains more than one type - map behavior may be unpredictable");
+
+      var str = "Geometry layer contains more than one type : \n\n"
+
+      source.types.forEach(type => {
+        str += type + "\n";
+      })
+
+      str += "\nMap behavior may be unpredictable."
+
+      alert(str);
     }
 
     var type = source.types[0];
@@ -393,7 +435,7 @@ class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        var layer = buildGeoJsonPolygonBaseLayer(key, self.sources[key].filtered);
+        var layer = buildGeoJsonPolygonBaseLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.base = id;
@@ -405,7 +447,7 @@ class MapController {
       case "LineString":
       case "MultiLineString":
 
-        var layer = buildGeoJeonLineStringBaseLayer(key, self.sources[key].filtered);
+        var layer = buildGeoJeonLineStringBaseLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.base = id;
@@ -416,7 +458,7 @@ class MapController {
 
       case "Point":
 
-        var layer = buildGeoJsonPointBaseLayer(key, self.sources[key].filtered);
+        var layer = buildGeoJsonPointBaseLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.base = id;
@@ -453,7 +495,16 @@ class MapController {
     }
 
     if (source.types.length > 1) {
-      alert("geometry layer contains more than one type - map behavior may be unpredictable");
+
+      var str = "Geometry layer contains more than one type : \n\n"
+
+      source.types.forEach(type => {
+        str += type + "\n";
+      })
+
+      str += "\nMap behavior may be unpredictable."
+
+      alert(str);
     }
 
     var type = source.types[0];
@@ -462,7 +513,7 @@ class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        var layer =  buildGeoJsonPolygonFilterLayer(key, self.sources[key].filtered, !self.controls.isExtruded(), self.sources[key].height);
+        var layer =  buildGeoJsonPolygonFilterLayer(source, !self.controls.isExtruded());
         var id = layer.id;
 
         self.sources[key].layers.filter = id;
@@ -474,7 +525,7 @@ class MapController {
       case "LineString":
       case "MultiLineString":
 
-        var layer =  buildGeoJsonLineStringFilterLayer(key, self.sources[key].filtered);
+        var layer =  buildGeoJsonLineStringFilterLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.filter = id;
@@ -485,7 +536,7 @@ class MapController {
 
       case "Point":
 
-        var layer = buildGeoJsonPointFilterLayer(key, self.sources[key].filtered);
+        var layer = buildGeoJsonPointFilterLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.filter = id;
@@ -781,6 +832,10 @@ class MapController {
       });
 
     }
+  }
+
+  addFilterLayerSheet(key, element) {
+
   }
 
   addFilterLayerController(key, element) {
@@ -1414,10 +1469,10 @@ class MapController {
     var form = d3.select(l.parentNode.parentNode).append("foreignObject");
     var input = form
         .attr({
-            "x": -50,
+            "x": -55,
             "y": -50,
             "height": 20,
-            "width": 100,
+            "width": 110,
             //"style" : "border : 1px solid grey; "
         })
         .append("xhtml:div")
@@ -1431,7 +1486,7 @@ class MapController {
     extrudeButton.classList.add("axis-menu-item");
     extrudeButton.appendChild(extrudeImg);
 
-    if (!source.types.includes("Polygon") && !source.types.includes("MultiPolygon")) {
+    if ((!source.types.includes("Polygon") && !source.types.includes("MultiPolygon")) || state.propertyType !== "number") {
       extrudeImg.classList.add("disabled");
     } else {
       extrudeButton.title = "Extrude";
@@ -1443,14 +1498,46 @@ class MapController {
     var reverseImg = document.createElement("img");
     reverseImg.classList.add("axis-menu-img");
     reverseImg.src = "img/split-icon.png";
+    if (state.propertyReversed) {
+      reverseImg.classList.add("selected");
+    } else {
+      reverseImg.classList.remove("selected");
+    }
 
     var reverseButton = document.createElement("div");
     reverseButton.classList.add("axis-menu-item");
-    reverseButton.title = "Reverse";
+
     reverseButton.appendChild(reverseImg);
-    reverseButton.addEventListener("click", e => {
-      console.log("reverse");
-    });
+
+    if (state.propertyType !== "number") {
+      reverseImg.classList.add("disabled");
+    } else {
+      reverseButton.title = "Reverse";
+      reverseButton.addEventListener("click", e => {
+        console.log("reverse");
+        state.propertyReversed = !state.propertyReversed;
+
+        if (state.propertyReversed) {
+          reverseImg.classList.add("selected");
+        } else {
+          reverseImg.classList.remove("selected");
+        }
+
+        var active = source.active;
+
+        source.brushed = [];
+
+        self.updateFilterLayerController(key);
+        self.updateFilterLayer(key, true);
+        self.updateFilterLayerPropertyStops(key);
+        self.updateFilter(key);
+
+        if (active != null) {
+          self.selectFilterLayerProperty(key, active);
+        }
+
+      });
+    }
 
     var colorImg = document.createElement("img");
     colorImg.classList.add("axis-menu-img");
@@ -1464,13 +1551,41 @@ class MapController {
       console.log("color");
     });
 
+    var zoomInImg = document.createElement("img");
+    zoomInImg.classList.add("axis-menu-img");
+    zoomInImg.classList.add("disabled");
+    zoomInImg.src = "img/plus-icon.png";
+
+    var zoomInButton = document.createElement("div");
+    zoomInButton.classList.add("axis-menu-item");
+    zoomInButton.title = "Zoom in";
+    zoomInButton.appendChild(zoomInImg);
+    zoomInButton.addEventListener("click", e => {
+      console.log("zoom in");
+    });
+
+    var zoomOutImg = document.createElement("img");
+    zoomOutImg.classList.add("axis-menu-img");
+    zoomOutImg.classList.add("disabled");
+    zoomOutImg.src = "img/minus-icon.png";
+
+    var zoomOutButton = document.createElement("div");
+    zoomOutButton.classList.add("axis-menu-item");
+    zoomOutButton.title = "Zoom out";
+    zoomOutButton.appendChild(zoomOutImg);
+    zoomOutButton.addEventListener("click", e => {
+      console.log("zoom out");
+    });
+
     input.appendChild(extrudeButton);
     input.appendChild(reverseButton);
     input.appendChild(colorButton);
+    input.appendChild(zoomInButton);
+    input.appendChild(zoomOutButton);
 
     var color = "#000000";
     var interval = state.propertyClamp !== undefined && state.propertyClamp !== null ? state.propertyClamp : state.propertyRange;
-    var func = d3.scale.quantile().domain(interval).range(state.propertyStyle);
+    var func = d3.scale.quantile().domain(interval).range(state.propertyStops.map(d => { return d[1]; }));
 
     if (state.propertyType === "string") {
 
@@ -1493,6 +1608,7 @@ class MapController {
 
     if (l.classList.contains("selected")) {
       l.classList.remove("selected");
+      form.remove();
       source.active = null;
       property = null;
 
@@ -1647,7 +1763,11 @@ class MapController {
     Object.keys(source.states).forEach(property => {
 
       var state = source.states[property];
-      var stops = state.propertyStops;
+      var style = state.propertyStyle.slice();
+
+      if (state.propertyReversed) {
+        style.reverse();
+      }
 
       if (state.propertyType === "number") {
 
@@ -1657,10 +1777,10 @@ class MapController {
 
           for (
             var i = state.propertyClamp[0], j=0;
-            j < state.propertyStops.length;
-            i += (state.propertyClamp[1] - state.propertyClamp[0]) / state.propertyStops.length, j++) {
+            j < style.length;
+            i += (state.propertyClamp[1] - state.propertyClamp[0]) / style.length, j++) {
 
-              nstops.push([i, stops[j][1]]);
+              nstops.push([i, style[j]]);
           }
 
           state.propertyRange = [state.propertyClamp[0], state.propertyClamp[1]];
@@ -1688,10 +1808,10 @@ class MapController {
 
           for (
             var i = nMin, j=0;
-            j < state.propertyStops.length;
-            i += (nMax - nMin) / state.propertyStops.length, j++) {
+            j < style.length;
+            i += (nMax - nMin) / style.length, j++) {
 
-              nstops.push([i, stops[j][1]]);
+              nstops.push([i, style[j]]);
           }
 
           state.propertyRange = [nMin, nMax];
@@ -1881,6 +2001,10 @@ class MapController {
           hkey.classList.add("legend-header-key");
           hkey.innerHTML = s;
 
+          hkey.addEventListener("click", e => {
+            content.classList.toggle("collapsed");
+          })
+
           var hprop = document.createElement("div");
           hprop.classList.add("legend-header-property");
           hprop.innerHTML = source.active;;
@@ -2065,13 +2189,13 @@ function detectTypes(data) {
 // initial layer states ---
 
 
-function buildGeoJsonPolygonBaseLayer(source, filter) {
+function buildGeoJsonPolygonBaseLayer(source) {
   return {
 
-   id : source + '-base',
-   source : source,
+   id : source.source + '-base',
+   source : source.source,
    type: 'line',
-   filter : filter,
+   filter : source.filtered,
    minzoom: 7,
    //maxzoom: 18,
    paint: {
@@ -2112,13 +2236,13 @@ function buildGeoJsonPolygonBaseLayer(source, filter) {
  };
 };
 
-function buildGeoJsonPolygonFilterLayer(source, filter, flat, heightProperty) {
+function buildGeoJsonPolygonFilterLayer(source, flat) {
   return {
 
-   id : source + '-filter',
-   source : source,
+   id : source.source + '-filter',
+   source : source.source,
    type: 'fill-extrusion',
-   filter : filter,
+   filter : source.filtered,
    paint: {
      'fill-extrusion-color':  [
                "case",
@@ -2128,8 +2252,8 @@ function buildGeoJsonPolygonFilterLayer(source, filter, flat, heightProperty) {
                "#000000",
                "#616161"
                ],
-     'fill-extrusion-height': flat ? 0 : ["get", heightProperty],
-     'fill-extrusion-base': 0,
+     'fill-extrusion-height': flat ? 0 : ["get", source.height],
+     'fill-extrusion-base': flat ? 0 : ["get", source.base],
      'fill-extrusion-opacity': 0.8,
      'fill-extrusion-vertical-gradient' : true
    }
@@ -2137,14 +2261,14 @@ function buildGeoJsonPolygonFilterLayer(source, filter, flat, heightProperty) {
  };
 };
 
-function buildGeoJeonLineStringBaseLayer(source, filter) {
+function buildGeoJeonLineStringBaseLayer(source) {
   return  {
 
-      id : source + '-base',
-      source : source,
+      id : source.source + '-base',
+      source : source.source,
       type: 'line',
       minzoom: 7,
-      filter : filter,
+      filter : source.filtered,
       //maxzoom: 18,
       paint: {
         'line-blur': 0.5,
@@ -2174,13 +2298,13 @@ function buildGeoJeonLineStringBaseLayer(source, filter) {
   };
 }
 
-function buildGeoJsonLineStringFilterLayer(source, filter) {
+function buildGeoJsonLineStringFilterLayer(source) {
   return {
 
-   id : source + '-filter',
-   source : source,
+   id : source.source + '-filter',
+   source : source.source,
    type: 'line',
-   filter : filter,
+   filter : source.filtered,
    paint: {
        'line-color' : "#616161",
        'line-width': [
@@ -2198,14 +2322,14 @@ function buildGeoJsonLineStringFilterLayer(source, filter) {
  };
 }
 
-function buildGeoJsonPointBaseLayer(source, filter) {
+function buildGeoJsonPointBaseLayer(source) {
   return {
 
-    id : source + '-base',
-    source : source,
+    id : source.source + '-base',
+    source : source.source,
     type : "circle",
     minzoom : 10,
-    filter : filter,
+    filter : source.filtered,
     paint : {
         "circle-radius":  [
             "interpolate",
@@ -2231,13 +2355,13 @@ function buildGeoJsonPointBaseLayer(source, filter) {
   };
 }
 
-function buildGeoJsonPointFilterLayer(source, filter) {
+function buildGeoJsonPointFilterLayer(source) {
   return {
 
-    id : source + '-filter',
-    source : source,
+    id : source.source + '-filter',
+    source : source.source,
     type : "circle",
-    filter : filter,
+    filter : source.filtered,
     minzoom : 10,
     paint : {
         "circle-radius":  [
@@ -2273,8 +2397,8 @@ function buildMapBoxDrawLayerStyle() {
           ['!=', 'mode', 'static']
       ],
       'paint': {
-          'fill-color': 'lightgrey', //#3bb2d0',
-          'fill-outline-color': 'lightgrey', //#3bb2d0',
+          'fill-color': 'black', //#3bb2d0',
+          'fill-outline-color': 'black', //#3bb2d0',
           'fill-opacity': 0, //0.1
       }
   },
@@ -2285,7 +2409,7 @@ function buildMapBoxDrawLayerStyle() {
           ['==', '$type', 'Polygon']
       ],
       'paint': {
-          'fill-color': 'grey', //'#fbb03b',
+          'fill-color': 'black', //'#fbb03b',
           'fill-outline-color': '#fbb03b',
           'fill-opacity': 0.1
       }
@@ -2298,7 +2422,7 @@ function buildMapBoxDrawLayerStyle() {
       ],
       'paint': {
           'circle-radius': 3,
-          'circle-color': 'grey', //'#fbb03b',
+          'circle-color': 'black', //'#fbb03b',
       }
   },
   {
@@ -2313,7 +2437,7 @@ function buildMapBoxDrawLayerStyle() {
           'line-join': 'round'
       },
       'paint': {
-          'line-color': 'lightgrey', //#3bb2d0',
+          'line-color': 'black', //#3bb2d0',
           'line-width': 2
       }
   },
@@ -2328,7 +2452,7 @@ function buildMapBoxDrawLayerStyle() {
           'line-join': 'round'
       },
       'paint': {
-          'line-color': 'grey', //'#fbb03b',
+          'line-color': 'black', //'#fbb03b',
           'line-dasharray': [0.2, 2],
           'line-width': 2
       }
@@ -2345,7 +2469,7 @@ function buildMapBoxDrawLayerStyle() {
           'line-join': 'round'
       },
       'paint': {
-          'line-color': 'lightgrey', //#3bb2d0',
+          'line-color': 'black', //#3bb2d0',
           'line-width': 2
       }
   },
@@ -2360,7 +2484,7 @@ function buildMapBoxDrawLayerStyle() {
           'line-join': 'round'
       },
       'paint': {
-          'line-color': 'grey', //'#fbb03b',
+          'line-color': 'black', //'#fbb03b',
           'line-dasharray': [0.2, 2],
           'line-width': 2
       }
@@ -2386,7 +2510,7 @@ function buildMapBoxDrawLayerStyle() {
       ],
       'paint': {
           'circle-radius': 3,
-          'circle-color': 'grey', //'#fbb03b',
+          'circle-color': 'black', //'#fbb03b',
       }
   },
   {
@@ -2413,7 +2537,7 @@ function buildMapBoxDrawLayerStyle() {
       ],
       'paint': {
           'circle-radius': 3,
-          'circle-color': 'lightgrey', //#3bb2d0',
+          'circle-color': 'black', //#3bb2d0',
       }
   },
   {
@@ -2437,7 +2561,7 @@ function buildMapBoxDrawLayerStyle() {
       ],
       'paint': {
           'circle-radius': 5,
-          'circle-color': 'grey', //'#fbb03b',
+          'circle-color': 'black', //'#fbb03b',
       }
   },
   {
@@ -2536,6 +2660,22 @@ function style(property) {
 
 }
 
+function clean(object) {
+
+  var clean = {};
+
+  Object.keys(object).forEach(k => {
+
+    var _k =  k.replace(/ /g, '_').replace(/\n/, '_');
+
+    clean[_k] = object[k];
+
+  });
+
+  return clean;
+
+}
+
 function wrangle(data) {
 
   var wrangled = {
@@ -2554,6 +2694,8 @@ function wrangle(data) {
     var properties = {};
 
     features.forEach((f, i) => {
+
+      f.properties = clean(f.properties);
 
       var type = f.geometry.type;
 

@@ -23,6 +23,7 @@
     <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css' type='text/css'/>
     <!--  html2canvas -->
     <script src='js/lib/html2canvas.min.js'></script>
+    <script src="js/lib/csvDownload.js"></script>
 
     <!--  colors -->
     <script src="js/lib/colorbrewer.js"></script>
@@ -36,17 +37,20 @@
     <div id='map'></div>
 
     <div id="interface">
-      <div id='left'>
-        <div id="left-header">data</div>
-        <div id="left-scroll-pane">
+      <div id='top'>
+        <div id='left'>
+          <div id="left-header">data</div>
+          <div id="left-scroll-pane">
+          </div>
         </div>
+        <div id='legend'></div>
       </div>
       <div id="bottom">
         <div id="bottom-header">filter</div>
         <div id="bottom-scroll-pane">
         </div>
       </div>
-      <div id='legend'></div>
+
     </div>
 
     <div id="banner">

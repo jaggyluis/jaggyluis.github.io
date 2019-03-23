@@ -94,18 +94,52 @@ class SSController {
 
         html2canvas(document.body).then(canvas => {
 
-          var img = new Image();
-          img.src = canvas.toDataURL();
+          // console.log("-> canvas");
+          //
+          // var img = new Image();
+          // img.src = canvas.toDataURL();
+          //
+          // var a = document.createElement('a');
+          // a.href = img.src;
+          // a.download = "output.png";
+          // document.body.appendChild(a);
+          // a.click();
+          // document.body.removeChild(a);
+          //
+          // console.log("-> done");
 
-          var a = document.createElement('a');
-          a.href = img.src;
-          a.download = "output.png";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          download(canvas, "output.png");
 
         });
       });
+
+      // Source from:  http://stackoverflow.com/questions/18480474/how-to-save-an-image-from-canvas
+
+      /* Canvas Donwload */
+      function download(canvas, filename) {
+        /// create an "off-screen" anchor tag
+        var lnk = document.createElement('a'), e;
+
+        /// the key here is to set the download attribute of the a tag
+        lnk.download = filename;
+
+        /// convert canvas content to data-uri for link. When download
+        /// attribute is set the content pointed to by link will be
+        /// pushed as "download" in HTML5 capable browsers
+        lnk.href = canvas.toDataURL("image/png;base64");
+
+        /// create a "fake" click-event to trigger the download
+        if (document.createEvent) {
+          e = document.createEvent("MouseEvents");
+          e.initMouseEvent("click", true, true, window,
+                           0, 0, 0, 0, 0, false, false, false,
+                           false, 0, null);
+
+          lnk.dispatchEvent(e);
+        } else if (lnk.fireEvent) {
+          lnk.fireEvent("onclick");
+        }
+      }
 
       return snapshotButton;
     }
@@ -137,11 +171,13 @@ class SSController {
 
             console.log("make flat");
             self._map.setPaintProperty(filterId, "fill-extrusion-height", 0);
+            self._map.setPaintProperty(filterId, "fill-extrusion-base", 0);
 
           } else {
 
             console.log("make extruded");
             self._map.setPaintProperty(filterId, "fill-extrusion-height", ["get", source.height]);
+            self._map.setPaintProperty(filterId, "fill-extrusion-base", ["get", source.base]);
           }
 
         }
@@ -160,7 +196,7 @@ class SSController {
       var toggleButton = document.createElement("button");
       toggleButton.classList.add("mapboxgl-ctrl-icon");
       toggleButton.type = "button";
-      toggleButton.title = "Perspective";
+      toggleButton.title = "3D View";
       toggleButton.appendChild(toggleImg);
       toggleButton.selected = false;
       toggleButton.pitch = 20;
@@ -172,7 +208,7 @@ class SSController {
           toggleButton.selected = false;
           toggleImg.src = "img/cube-icon.png";
           toggleImg.classList.add("inactive");
-          toggleButton.title = "Perspective Toggle";
+          toggleButton.title = "3D View";;
           toggleButton.pitch = map.getPitch();
 
           map.setPitch(0);
@@ -184,7 +220,7 @@ class SSController {
           toggleButton.selected = true;
           //toggleImg.src = "img/toggle-icon.png";
           toggleImg.classList.remove("inactive");
-          toggleButton.title = "Plan Toggle";
+          toggleButton.title = "Plan View";
 
           map.setPitch(toggleButton.pitch);
 

@@ -1010,9 +1010,9 @@ pc.createAxes = function() {
         "x": 0,
         "class": "label"
       })
-      .text(dimensionLabels)
-      .on("dblclick", flipAxisAndUpdatePCP)
-      .on("wheel", rotateLabels);
+      .text(dimensionLabels);
+      //.on("dblclick", flipAxisAndUpdatePCP) // LJ disable ---
+      //.on("wheel", rotateLabels);
 
   addMaxMinText(g); //LH
   addClamp(g); // LJ
@@ -1073,9 +1073,9 @@ pc.updateAxes = function() {
         "x": 0,
         "class": "label"
       })
-      .text(dimensionLabels)
-      .on("dblclick", flipAxisAndUpdatePCP)
-      .on("wheel", rotateLabels);
+      .text(dimensionLabels);
+      //.on("dblclick", flipAxisAndUpdatePCP) // LJ disable ---
+      //.on("wheel", rotateLabels);
 
   addMaxMinText(g_data); // LH
   addClamp(g_data); // LJ
