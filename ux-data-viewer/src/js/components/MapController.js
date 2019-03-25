@@ -203,6 +203,7 @@ class MapController {
     self.sources[key].visible = true;
     self.sources[key].brushed = [];
     self.sources[key].coords = null;
+    self.sources[key].grid = null;
     self.sources[key].filtered = ["in", "_id"];
     self.sources[key].hidden = [];
     self.sources[key].popups = [];
@@ -836,6 +837,37 @@ class MapController {
 
   addFilterLayerSheet(key, element) {
 
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null || source.coords === null) {
+      return;
+    }
+
+    source.grid = d3.divgrid(source, self)(element)
+
+    self.updateFilterLayerSheet(key);
+
+    return source.grid;
+  }
+
+  updateFilterLayerSheet(key) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null || source.grid === null) {
+      return;
+    }
+
+    var properties = self.getSourceKeyProperties(key, true, false);
+    //properties.splice(0,0, "_id");
+
+    var data = source.brushed.length === 0 || source.bru ? source.coords.data() : source.brushed;
+
+    source.grid.data(data)
+      .columns(properties)
+      .render();
   }
 
   addFilterLayerController(key, element) {
@@ -881,6 +913,7 @@ class MapController {
 
           var state = source.states[a];
 
+          self.updateFilterLayerSheet(key);
           self.updateFilterLayer(key);
           self.updateLegend();
 
@@ -1412,6 +1445,7 @@ class MapController {
       .render()
       .updateAxes();
 
+    self.updateFilterLayerSheet(key);
     self.updateFilterLayerMapPaintProperties(key, null);
 
     source.coords.selection.selectAll(".label")[0].forEach(other => {

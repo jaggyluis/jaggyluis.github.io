@@ -235,7 +235,7 @@ function loadDataLayer(data, label, open) {
       return a._id - b._id;
     });
 
-    exportObjArrayToCSV(label + "_data", data, properties);
+    //exportObjArrayToCSV(label + "_data", data, properties); //NOTE - this is off for testing ---
   });
 
   boxHeader.appendChild(downloadButton);
@@ -273,7 +273,6 @@ function loadDataLayer(data, label, open) {
   var boxCoords = document.createElement("div");
   boxCoords.classList.add("box-item");
   boxCoords.id = label + "-coords";
-  boxCoords.style.width = "100%";
 
   boxContent.appendChild(boxCoords);
 
@@ -293,12 +292,44 @@ function loadDataLayer(data, label, open) {
     }
   });
 
-  // var boxSheet = document.createElement("div");
-  // boxSheet.classList.add("box-item");
-  // boxSheet.id = label + "-sheet";
-  // boxContent.appendChild(boxSheet);
-  //
-  // mapController.addFilterLayerSheet(label, boxSheet);
+  var boxSheet = document.createElement("div");
+  boxSheet.classList.add("box-item");
+  boxSheet.classList.add("box-overflow");
+  boxSheet.classList.add("collapsed");
+  boxSheet.id = label + "-sheet";
+  boxContent.appendChild(boxSheet);
+
+  mapController.addFilterLayerSheet(label, boxSheet);
+
+  sheetButton.addEventListener("click", e => {
+
+    if (boxSheet.classList.contains('collapsed')) {
+
+      boxSheet.classList.remove("collapsed");
+
+      if (!boxCoords.classList.contains("collapsed")) {
+        boxCoords.classList.add("collapsed");
+      }
+
+      sheetImg.classList.add("selected");
+      filterImg.classList.remove("selected");
+    }
+  });
+
+  filterButton.addEventListener("click", e => {
+
+    if (boxCoords.classList.contains('collapsed')) {
+
+      boxCoords.classList.remove("collapsed");
+
+      if (!boxSheet.classList.contains("collapsed")) {
+        boxSheet.classList.add("collapsed");
+      }
+
+      filterImg.classList.add("selected");
+      sheetImg.classList.remove("selected");
+    }
+  });
 
   boxContent.classList.add("collapsed"); // build parcoords then collapse ---
   box.classList.add("collapsed");

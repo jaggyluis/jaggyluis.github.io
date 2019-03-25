@@ -325,8 +325,13 @@ img {
 }
 
 .box-item {
-  width: 50%;
+  width: 100%;
   height: 100%;
+  position: absolute;
+}
+
+.box-overflow {
+    overflow-y: scroll;
 }
 
 #legend {
@@ -590,6 +595,84 @@ img {
 .axis-menu-img:hover {
   opacity: 1 !important;
 }
+
+/* Div Grid */
+
+.row, .header, .cell {
+  height: 12px;
+ }
+
+.row, .header {
+  clear: left;
+  display: flex;
+ }
+
+.header {
+  font-weight: bold;
+  font-size: 10px;
+  position: sticky;
+  top: 0;
+  padding: 5px;
+  padding-left: 8px;
+  background-color: white;
+  border-bottom: 1px solid #f1f1f1;
+  z-index: 1;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.row {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.row:hover {
+  background-color: #e2e2e261;
+}
+
+.cell.col {
+  margin: 0;
+}
+
+.cell-label {
+  width: 100%;
+  text-align: center;
+}
+
+.cell-label.selected {
+  color: black;
+}
+
+.cell-label:hover {
+  color: black;
+}
+
+.cell {
+  float: left;
+  display: flex;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.cell-bar {
+  height: 100%;
+  width: 10px;
+  background: lightgrey;
+  margin: 1px;
+}
+
+
+
+.cell-value {
+  padding-left: 5px;
+  position: absolute;
+  font-size: 9px;
+  margin-top: 1px;
+}
+
 
 /* legend */
 
