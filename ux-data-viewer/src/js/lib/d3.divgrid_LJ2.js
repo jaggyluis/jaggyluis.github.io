@@ -10,6 +10,7 @@ d3.divgrid = function(source, config) {
     reverse : true,
     headers : [],
     rows : [],
+    max : 100
   }
 
   var dg = function(selection) {
@@ -18,6 +19,23 @@ d3.divgrid = function(source, config) {
 
     return dg;
   };
+
+  dg.rows = function() {
+    return __.rows;
+  }
+
+  dg.header = function() {
+    return __.headers;
+  }
+
+  dg.max = function (max) {
+    if (!arguments.length) return __.max;
+    __.max = max;
+
+    dg.render();
+
+    return dg;
+  }
 
   dg.data = function(data) {
     if (!arguments.length) return __.data;
@@ -50,23 +68,75 @@ d3.divgrid = function(source, config) {
 
     dg.render();
 
-    __.headers.forEach(other => {
-      if (other[1].innerHTML === k) {
-        other[2].style.visibility = "visible";
+    __.headers.forEach(header => {
+      if (header.label.innerHTML === k) {
+        header.button.style.visibility = "visible";
 
         if(__.reverse) {
-          other[3].style.transform = "rotate(-90deg) ";
+          header.img.style.transform = "rotate(-90deg) ";
         } else {
-          other[3].style.transform = "rotate(90deg) ";
+          header.img.style.transform = "rotate(90deg) ";
         }
 
       } else {
-        other[2].style.visibility = "hidden";
+        header.button.style.visibility = "hidden";
       }
     });
 
     return this;
 
+  }
+
+  dg.select = function(d) {
+
+    var key = __.source.source;
+    var types = __.source.types;
+
+    var features = __.source.data.features.filter(feature => {
+      return d._id === feature.id;
+    });
+
+    if (features.length === 0) {
+      return;
+    }
+
+    __.rows.forEach(other => {
+      if (other.data === d) {
+        other.cells.forEach(cell => {
+          if (!cell.bar.classList.contains("selected")) {
+            cell.bar.classList.add("selected");
+          }
+        });
+        if (!other.img.classList.contains("selected")) {
+          other.img.classList.add("selected");
+        }
+      }
+    });
+  }
+
+  dg.deselect = function(d) {
+
+    var key = __.source.source;
+    var types = __.source.types;
+
+    var features = __.source.data.features.filter(feature => {
+      return d._id === feature.id;
+    });
+
+    if (features.length === 0) {
+      return;
+    }
+
+    __.rows.forEach(other => {
+      if (other.data === d) {
+        other.cells.forEach(cell => {
+          if (cell.bar.classList.contains("selected")) {
+            cell.bar.classList.remove("selected");
+          }
+        });
+        other.img.classList.remove("selected");
+      }
+    });
   }
 
   dg.render = function() {
@@ -81,6 +151,11 @@ d3.divgrid = function(source, config) {
 
     var header = document.createElement("div");
     header.classList.add("header");
+
+    var index = document.createElement("div");
+    index.style = "width : 30px ; flex : none;" ;
+
+    header.appendChild(index);
 
     Object.keys(__.source.coords.dimensions()).forEach(c => {
     //__.columns.forEach(c => {
@@ -101,7 +176,7 @@ d3.divgrid = function(source, config) {
 
       var reverseButton = document.createElement("div");
       reverseButton.classList.add("box-menu-item");
-      reverseButton.style = " margin: 0; padding-left: 5px; margin: 1px";
+      reverseButton.style = " margin: 0; padding-left: 5px; margin: 1px; position: absolute; top: 0; right: 0;";
       reverseButton.style.visibility = "hidden";
       reverseButton.appendChild(reverseImg);
 
@@ -113,7 +188,12 @@ d3.divgrid = function(source, config) {
 
       header.appendChild(cell);
 
-      __.headers.push([cell, label, reverseButton, reverseImg]);
+      __.headers.push({
+        cell : cell,
+        label : label,
+        button : reverseButton,
+        img :  reverseImg
+      });
 
     });
 
@@ -121,50 +201,54 @@ d3.divgrid = function(source, config) {
 
     // data ---
 
+    var count = 0
+
     __.data.forEach((d,i) => {
 
-      if (i > 500) {
+      if (i >= __.max && !__.source.selected.includes(d)) {
         return;
+      }
+
+      if (count == __.max) {
+        var divider = document.createElement("div");
+        divider.style = "border-top : 1px solid grey";
+        div.appendChild(divider);
       }
 
       var row = document.createElement("div");
       row.classList.add("row");
 
+      var selectImg = document.createElement("img");
+      selectImg.classList.add("box-menu-img");
+      selectImg.src = "img/pointer-icon.png";
+
+      var selectButton = document.createElement("div");
+      selectButton.classList.add("box-menu-item");
+      selectButton.style = " margin: 0; padding-left: 8px; padding-right: 0px";
+      selectButton.appendChild(selectImg);
+
+      var indexButton = document.createElement("div");
+      indexButton.classList.add("box-menu-item");
+      indexButton.style = " margin: 0px; padding-top: 1px; padding-left: 8px; padding-right: 0px; font-size: 9px; ";
+      indexButton.innerHTML = i;
+
+      row.appendChild(selectButton);
+      row.appendChild(indexButton);
+
       row.addEventListener("click", e => {
 
-        var features = __.source.data.features.filter(feature => {
-          return d._id === feature.id;
-        });
+        if (__.source.selected.includes(d)) {
 
-        var key = __.source.source;
-        var types = __.source.types;
+          __.config.deselectFeature(__.source.source, d);
 
-        if (types.includes("MultiPolygon")) {
+        } else {
 
-          features.forEach(feature => {
-              __.config.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates[0][0][0]);
-          });
-
-        } else if (types.includes("Polygon") || types.includes("MultiLineString")) {
-
-          features.forEach(feature => {
-              __.config.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates[0][0]);
-          });
-
-        } else if (types.includes("LineString")) {
-
-          features.forEach(feature => {
-              __.config.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates[0]);
-          });
-
-        } else if (types.includes("Point")) {
-
-          features.forEach(feature => {
-              __.config.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates);
-          });
+          __.config.selectFeature(__.source.source, d);
         }
 
       });
+
+      var cells = [];
 
       Object.keys(__.source.coords.dimensions()).forEach(c => {
       // __.columns.forEach(c => {
@@ -178,9 +262,16 @@ d3.divgrid = function(source, config) {
         var cellbar = document.createElement("div");
         cellbar.classList.add("cell-bar");
 
+        var interval = state.propertyClamp !== undefined && state.propertyClamp !== null ? state.propertyClamp : state.propertyRange;
+        var func = d3.scale.quantile().domain(interval).range(state.propertyStops.map(d => { return d[1]; }));
+
+        if (__.source.active === c) {
+          cellbar.style.background = func(d[c]);
+          cellbar.style.opacity = 0.5;
+        }
+
         var cellValue = document.createElement("div");
         cellValue.classList.add("cell-value");
-
 
         if (state.propertyType === "number") {
 
@@ -199,11 +290,41 @@ d3.divgrid = function(source, config) {
 
         row.appendChild(cell);
 
+        cells.push({
+          cell : cell,
+          bar : cellbar,
+          value : cellValue
+        });
+
       });
 
       div.appendChild(row);
 
-      __.rows.push([row]);
+      row.addEventListener("mouseenter", e => {
+        __.config.highlightFeature(__.source.source, d);
+      });
+
+      row.addEventListener("mouseleave", e=> {
+        __.config.unhighlightFeature(__.source.source);
+      })
+
+      __.rows.push({
+        data : d,
+        img : selectImg,
+        row : row,
+        cells : cells
+      });
+
+      if (__.source.selected.includes(d)) {
+
+        dg.select(d);
+
+      } else {
+
+        dg.deselect(d);
+      }
+
+      count += 1;
 
     });
 

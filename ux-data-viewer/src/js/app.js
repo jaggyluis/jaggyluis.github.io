@@ -34,6 +34,9 @@ const mapController = new MapController(map);
 // interface setup ---
 
 const interface = document.getElementById("interface");
+
+const topDiv = document.getElementById("top");
+
 const left = document.getElementById("left");
 const leftHeader = document.getElementById("left-header");
 const lscroll = document.getElementById("left-scroll-pane");
@@ -55,7 +58,7 @@ leftHeader.addEventListener("click", e => {
 });
 
 bottomHeader.addEventListener("click", e => {
-  if (!areFiltersPresent()) {
+  if (!areFiltersPresent() || bottom.classList.contains("expanded")) {
     return;
   }
   bscroll.classList.toggle("collapsed");
@@ -112,8 +115,8 @@ var hiddenProperties = [
 var schemeBase = {
   id : "base",
   data : {
-    buildings :   "data/syd/190315/buildings_existing.geojson",
-    openSpaces :  "data/syd/190315/public_open_spaces.geojson",
+    buildings :   "data/syd/gansw/buildings_existing.geojson",
+    openSpaces :  "data/syd/gansw/public_open_spaces.geojson",
     blocks :      "data/syd/blocks.geojson",
     points :      "data/syd/points.geojson",
     ways :        "data/syd/ways.geojson"
@@ -123,20 +126,20 @@ var schemeBase = {
 var scheme1m = {
   id : "1m",
   data : {
-    blocks :      "data/syd/190315/blocks_pr_1mil.geojson",
-    buildings :   "data/syd/190315/buildings_pr_1mil.geojson",
-    parks :       "data/syd/190315/parks_pr_1mil.geojson",
-    ways :        "data/syd/190315/ways_1mil_gc.geojson",
+    blocks :      "data/syd/gansw/blocks_pr_1mil.geojson",
+    buildings :   "data/syd/gansw/buildings_pr_1mil.geojson",
+    parks :       "data/syd/gansw/parks_pr_1mil.geojson",
+    ways :        "data/syd/gansw/ways_1mil_gc.geojson",
   }
 }
 
 var scheme700k = {
   id : "700k",
   data : {
-    blocks :      "data/syd/190315/blocks_pr_700k.geojson",
-    buildings :   "data/syd/190315/buildings_pr_700k.geojson",
-    parks :       "data/syd/190315/parks_pr_700k.geojson",
-    ways :        "data/syd/190315/ways_700k_gc.geojson",
+    blocks :      "data/syd/gansw/blocks_pr_700k.geojson",
+    buildings :   "data/syd/gansw/buildings_pr_700k.geojson",
+    parks :       "data/syd/gansw/parks_pr_700k.geojson",
+    ways :        "data/syd/gansw/ways_700k_gc.geojson",
   }
 }
 
@@ -205,7 +208,8 @@ function loadDataLayer(data, label, open) {
   var boxLabel = document.createElement("div");
   boxLabel.classList.add("box-label");
   boxLabel.id = label + "-box-label";
-  boxLabel.innerHTML = " - " + label;
+  //boxLabel.innerHTML = " - " + label; // swap for below ---
+  boxLabel.innerHTML = label;
 
   boxHeader.appendChild(boxLabel);
 
@@ -264,6 +268,17 @@ function loadDataLayer(data, label, open) {
 
   boxHeader.appendChild(filterButton);
 
+  var expandImg = document.createElement("img");
+  expandImg.classList.add("box-menu-img");
+  expandImg.src = "img/expand-icon.png";
+
+  var expandButton = document.createElement("div");
+  expandButton.classList.add("box-menu-item");
+  expandButton.title = "Expand";
+  expandButton.appendChild(expandImg);
+
+  boxHeader.appendChild(expandButton);
+
   var boxContent = document.createElement("div");
   boxContent.classList.add("box-content");
   boxContent.id = label + "-box-content";
@@ -272,25 +287,26 @@ function loadDataLayer(data, label, open) {
 
   var boxCoords = document.createElement("div");
   boxCoords.classList.add("box-item");
+  boxCoords.classList.add("box-block");
   boxCoords.id = label + "-coords";
 
   boxContent.appendChild(boxCoords);
 
   mapController.addFilterLayerController(label, boxCoords);
 
-  boxLabel.addEventListener("click", e=> {
-
-    if (boxContent.classList.contains('collapsed')) {
-
-      boxContent.classList.remove("collapsed");
-      boxLabel.innerHTML = " - " + label;
-
-    } else {
-
-      boxContent.classList.add("collapsed");
-      boxLabel.innerHTML = " + " + label;
-    }
-  });
+  // boxLabel.addEventListener("click", e=> { // disable ---
+  //
+  //   if (boxContent.classList.contains('collapsed')) {
+  //
+  //     boxContent.classList.remove("collapsed");
+  //     boxLabel.innerHTML = " - " + label;
+  //
+  //   } else {
+  //
+  //     boxContent.classList.add("collapsed");
+  //     boxLabel.innerHTML = " + " + label;
+  //   }
+  // });
 
   var boxSheet = document.createElement("div");
   boxSheet.classList.add("box-item");
@@ -306,13 +322,19 @@ function loadDataLayer(data, label, open) {
     if (boxSheet.classList.contains('collapsed')) {
 
       boxSheet.classList.remove("collapsed");
+      topDiv.classList.remove("collapsed");
+      bottom.classList.remove("expanded");
 
       if (!boxCoords.classList.contains("collapsed")) {
         boxCoords.classList.add("collapsed");
       }
 
-      sheetImg.classList.add("selected");
+      if (!sheetImg.classList.contains("selected")) {
+        sheetImg.classList.add("selected");
+      }
+
       filterImg.classList.remove("selected");
+      expandImg.classList.remove("selected");
     }
   });
 
@@ -321,13 +343,67 @@ function loadDataLayer(data, label, open) {
     if (boxCoords.classList.contains('collapsed')) {
 
       boxCoords.classList.remove("collapsed");
+      topDiv.classList.remove("collapsed");
+      bottom.classList.remove("expanded");
 
       if (!boxSheet.classList.contains("collapsed")) {
         boxSheet.classList.add("collapsed");
       }
 
-      filterImg.classList.add("selected");
+      if (!filterImg.classList.contains("selected")) {
+        filterImg.classList.add("selected");
+      }
+
       sheetImg.classList.remove("selected");
+      expandImg.classList.remove("selected");
+    }
+  });
+
+  expandButton.addEventListener("click", e => {
+
+    console.log("expand");
+
+    if (!topDiv.classList.contains('collapsed')) {
+
+      topDiv.classList.add("collapsed");
+
+      if (!bottom.classList.contains("expanded")) {
+        bottom.classList.add("expanded");
+      }
+
+      if (!expandImg.classList.contains("selected")) {
+        expandImg.classList.add("selected");
+      }
+
+      if (!boxContent.classList.contains("expanded")) {
+        boxContent.classList.add("expanded");
+      }
+
+      boxCoords.classList.remove("collapsed");
+      boxSheet.classList.remove("collapsed");
+
+      filterImg.classList.remove("selected");
+      if (!filterImg.classList.contains("disabled")) {
+        filterImg.classList.add("disabled");
+      }
+
+      sheetImg.classList.remove("selected");
+      if (!sheetImg.classList.contains("disabled")) {
+        sheetImg.classList.add("disabled");
+      }
+
+    } else {
+
+      topDiv.classList.remove("collapsed");
+      bottom.classList.remove("expanded");
+      expandImg.classList.remove("selected");
+      boxContent.classList.remove("expanded");
+
+      boxSheet.classList.add("collapsed");
+      filterImg.classList.add("selected");
+
+      filterImg.classList.remove("disabled");
+      sheetImg.classList.remove("disabled");
     }
   });
 
@@ -361,7 +437,8 @@ function loadDataLayer(data, label, open) {
   var docLabel = document.createElement("div");
   docLabel.classList.add("document-label");
   docLabel.id = label + "-document-label";
-  docLabel.innerHTML = " - " + label;
+  //docLabel.innerHTML = " - " + label; // swap for below ---
+  docLabel.innerHTML = label;
 
   docHeader.appendChild(docLabel);
 
@@ -395,25 +472,26 @@ function loadDataLayer(data, label, open) {
 
   var docContent = document.createElement("div");
   docContent.classList.add("document-content");
+  docContent.classList.add("collapsed"); // adde-d ---
   docContent.id = label + "-document-content";
 
   doc.appendChild(docContent);
 
   lscroll.appendChild(doc);
 
-  docLabel.addEventListener("click", e=> {
-
-    if (docContent.classList.contains('collapsed')) {
-
-      docContent.classList.remove("collapsed");
-      docLabel.innerHTML = " - " + label;
-
-    } else {
-
-      docContent.classList.add("collapsed");
-      docLabel.innerHTML = " + " + label;
-    }
-  });
+  // docLabel.addEventListener("click", e=> { // disable ---
+  //
+  //   if (docContent.classList.contains('collapsed')) {
+  //
+  //     docContent.classList.remove("collapsed");
+  //     docLabel.innerHTML = " - " + label;
+  //
+  //   } else {
+  //
+  //     docContent.classList.add("collapsed");
+  //     docLabel.innerHTML = " + " + label;
+  //   }
+  // });
 
   docViewButton.addEventListener("click", e => {
 
@@ -435,12 +513,22 @@ function loadDataLayer(data, label, open) {
 
   docFilterButton.addEventListener("click", e => {
 
+      var filterButtons = document.getElementsByClassName("document-filter-button");
+
+      for (var i = 0; i < filterButtons.length; i++) {
+        if ( filterButtons[i].selected && filterButtons[i] !== docFilterButton) {
+           filterButtons[i].click();
+        }
+      }
+
       if (docFilterImg.classList.contains('selected')) {
 
         docFilterButton.selected = false;
 
         docFilterImg.classList.remove("selected");
         box.classList.add("collapsed");
+
+        docContent.classList.add("collapsed"); // adde-d ---
 
 
       } else {
@@ -449,6 +537,8 @@ function loadDataLayer(data, label, open) {
 
         docFilterImg.classList.add("selected");
         box.classList.remove("collapsed");
+
+        docContent.classList.remove("collapsed"); // adde-d ---
 
       }
   });
@@ -490,7 +580,6 @@ function loadDataLayer(data, label, open) {
     propertyExtrudeImg.style =" width: 10px; height: 10px;  padding-right: 10px; opacity: 0.3; ";
 
     var propertyExtrudeButton = document.createElement("div");
-    //propertyExtrudeButton.type = "button";
     propertyExtrudeButton.title = "extrude";
     propertyExtrudeButton.appendChild(propertyExtrudeImg);
     propertyExtrudeButton.addEventListener("click", e => {

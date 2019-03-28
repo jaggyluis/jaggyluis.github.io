@@ -205,6 +205,7 @@ class MapController {
     self.sources[key].coords = null;
     self.sources[key].grid = null;
     self.sources[key].filtered = ["in", "_id"];
+    self.sources[key].hoveredStateId =  null;
     self.sources[key].hidden = [];
     self.sources[key].popups = [];
     self.sources[key].selected = [];
@@ -389,10 +390,6 @@ class MapController {
     map.setLayoutProperty(key + "-base", 'visibility', visibility);
     map.setLayoutProperty(key + "-filter", 'visibility', visibility);
 
-    while(source.popups[0]) {
-      source.popups[0].remove();
-    }
-
     source.visible = visible;
 
     self.updateLegend();
@@ -553,40 +550,21 @@ class MapController {
 
     // --- highlight
 
-    var hoveredStateId =  null;
-
     self.map.on("mousemove", key + "-filter", function(e) {
 
       if (e.features.length > 0) {
 
         var feature = e.features[0];
         var properties = feature.properties;
-        var highlight = source.selected.slice();
 
-        highlight.push(properties);
-
-        if (hoveredStateId) {
-          self.map.setFeatureState({source : key, id : hoveredStateId}, {hover : false } );
-        }
-
-        hoveredStateId = feature.id;
-        self.map.setFeatureState({source : key, id : hoveredStateId}, {hover : true } );
-
-        source.coords.highlight(highlight);
+        self.highlightFeature(key, properties);
       }
 
     });
 
     self.map.on("mouseleave", key + "-filter", function() {
 
-      if (hoveredStateId) {
-        map.setFeatureState({source : key, id : hoveredStateId}, {hover : false });
-      }
-
-      hoveredStateId = null;
-
-      self.updateFilterLayerControllerSelection(key);
-
+      self.unhighlightFeature(key);
     });
 
     // --- popup -- multiples for comparison
@@ -594,12 +572,154 @@ class MapController {
     self.map.on('click', key + "-filter", function(e) {
 
       if (e.features.length > 0) {
-
-        var feature = e.features[0];
-
-        self.addFilterLayerFeaturePopup(key, feature, e.lngLat);
+        self.selectFeature(key, e.features[0].properties, e.lngLat);
       }
 
+    });
+  }
+
+  highlightFeature(key, data)  {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    var highlight = source.selected.slice();
+
+    highlight.push(data);
+
+    if (source.hoveredStateId) {
+      self.map.setFeatureState({source : key, id : source.hoveredStateId}, {hover : false } );
+    }
+
+    source.hoveredStateId = data._id;
+    self.map.setFeatureState({source : key, id : source.hoveredStateId}, {hover : true } );
+
+    if (source.coords) {
+      source.coords.highlight(highlight);
+    }
+
+  }
+
+  unhighlightFeature(key) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    if (source.hoveredStateId) {
+      map.setFeatureState({source : key, id : source.hoveredStateId}, {hover : false });
+    }
+
+    source.hoveredStateId = null;
+
+    self.updateFilterLayerControllerSelection(key);
+  }
+
+  selectFeature(key, data, location) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    var types = source.types;
+    var features = source.data.features.filter(feature => {
+      return data._id === feature.id;
+    });
+
+    if (features.length === 0) {
+      return;
+    }
+
+    features.forEach(feature => {
+
+      if (location === undefined || location === null) {
+        if (types.includes("MultiPolygon")) {
+          location = feature.geometry.coordinates[0][0][0];
+
+        } else if (types.includes("Polygon") || types.includes("MultiLineString")) {
+          location = feature.geometry.coordinates[0][0];
+
+        } else if (types.includes("LineString")) {
+          location = feature.geometry.coordinates[0];
+
+        } else if (types.includes("Point")) {
+          location = feature.geometry.coordinates;
+        }
+      }
+
+      source.selected.push(feature.properties);
+      source.grid.select(feature.properties);
+
+      self.addFilterLayerFeaturePopup(key, feature, location);
+
+      self.map.setFeatureState({source : key, id : feature.id }, {selected : true });
+
+    });
+
+    self.updateFilterLayerControllerSelection(key);;
+  }
+
+  deselectFeature(key, data) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    var features = source.data.features.filter(feature => {
+      return data._id === feature.id;
+    });
+
+    if (features.length === 0) {
+      return;
+    }
+
+    features.forEach(feature => {
+
+      var index = source.selected.indexOf(feature.properties);
+
+      if (index != -1) {
+        source.selected.splice(index, 1);
+      }
+
+      source.grid.deselect(feature.properties);
+
+      self.removeFilterLayerFeaturePopup(key, feature);
+
+      self.map.setFeatureState({source : key, id : feature.id }, {selected : false });
+
+    });
+
+    self.updateFilterLayerControllerSelection(key);
+  }
+
+  removeFilterLayerFeaturePopup(key, feature) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    var popups = source.popups.filter(p => {
+        return p.properties._id == feature.id;
+    });
+
+    popups.forEach(p => {
+      p.remove();
     });
   }
 
@@ -613,10 +733,24 @@ class MapController {
     }
 
     var properties = feature.properties;
+    var types = source.types;
     var state = self.map.getFeatureState({source : key, id : feature.id });
     var lst = document.createElement("div");
 
-    location = location === undefined || location === null ? feature.geometry.coordinates[0] : location;
+    if (location === undefined || location === null) {
+      if (types.includes("MultiPolygon")) {
+        location = feature.geometry.coordinates[0][0][0];
+
+      } else if (types.includes("Polygon") || types.includes("MultiLineString")) {
+        location = feature.geometry.coordinates[0][0];
+
+      } else if (types.includes("LineString")) {
+        location = feature.geometry.coordinates[0];
+
+      } else if (types.includes("Point")) {
+        location = feature.geometry.coordinates;
+      }
+    }
 
     var header = document.createElement("div");
     header.innerHTML = key;
@@ -667,12 +801,9 @@ class MapController {
         .setHTML(lst.innerHTML)
         .addTo(self.map);
 
+      popup.properties = properties; // NOTE - this is to find it later ---
+
       source.popups.push(popup);
-
-      self.map.setFeatureState({source : key, id : feature.id }, {selected : true });
-      source.selected.push(feature.properties);
-
-      self.updateFilterLayerControllerSelection(key);
 
       popup._content.addEventListener("mouseenter", function(e) {
 
@@ -814,12 +945,10 @@ class MapController {
       });
 
       popup.on('close', function() {
-        self.map.setFeatureState({source : key, id : feature.id }, {selected : false });
 
         source.popups.splice(source.popups.indexOf(popup), 1);
-        source.selected.splice(source.selected.indexOf(feature.properties), 1)
 
-        self.updateFilterLayerControllerSelection(key);
+        self.deselectFeature(key, popup.properties);
 
         if (indicator) {
           indicator.parentNode.removeChild(indicator);
@@ -903,7 +1032,7 @@ class MapController {
         .color(function(d) { return "#000000"; })
         .alpha(0.05)
         //.composite("darken")
-        .margin({ top: 30, left: 50 /*200*/, bottom: 60, right: 50 })
+        .margin({ top: 30, left: 30, bottom: 60, right: 15})
         .mode("queue")
         .brushMode("1D-axes")
         //.reorderable()
@@ -911,169 +1040,11 @@ class MapController {
 
           source.brushed = d;
 
-          var state = source.states[a];
-
           self.updateFilterLayerSheet(key);
           self.updateFilterLayer(key);
           self.updateLegend();
-
-          var dimensions = source.coords.selection.selectAll(".dimension")[0];
-          var extent = d3.select(dimensions.filter(function(d) { return d.__data__ === a; })[0]).select(".extent");
-          var bounds = source.coords.brushExtents()[a];
-
-          if (bounds === undefined) {
-
-            if (!self.areKeysDown(["Control"])) {
-              return;
-            }
-
-            source.brushed  = [];
-            state.propertyClamp = null;
-
-            self.removeFilter(key, a);
-          }
-
-          var element = extent[0][0];
-          var isPressed = false;
-
-          var keyFunc =  (e) => {
-
-            if (e.key === "Control") {
-
-              if (e.ctrlKey) {
-
-                if (isPressed) {
-                  return;
-                }
-
-                isPressed = true;
-
-                if (!element.classList.contains("zoom")) {
-                  element.classList.add("zoom");
-                }
-
-              } else {
-
-                if (!isPressed) {
-                  return;
-                }
-
-                isPressed = false;
-
-                if (element.classList.contains("zoom")) {
-                  element.classList.remove("zoom");
-                }
-              }
-            }
-          }
-
-          element.onmousedown = (e) => {
-
-            if (e.ctrlKey) {
-
-              var filter = {
-                filterKey : a,
-                filter : (value) => {
-                    return value[a] >= bounds[1] || value[a] <= bounds[0];
-                }
-              };
-
-              state.propertyClamp = bounds;
-
-              self.addFilters(key, [filter]);
-              e.stopPropagation();
-
-              var domain = source.coords.dimensions()[a].yscale.domain();
-              var extents = source.coords.brushExtents();
-              extents[a] = domain;
-
-              source.coords.brushExtents(extents);
-            }
-
-          };
-
-          element.onfocus = (e) => {
-            element.onkeydown = keyFunc;
-            element.onkeyup = keyFunc;
-          }
-
-          element.onmouseover = (e) => {
-
-            element.focus();
-
-            if (e.ctrlKey) {
-              if (!element.classList.contains("zoom")) {
-                element.classList.add("zoom");
-              }
-            }
-
-          };
-
-          element.onmouseleave = (e) => {
-
-            element.blur();
-
-            if (element.classList.contains("zoom")) {
-              element.classList.remove("zoom");
-            }
-
-          };
-
         })
         .render();
-
-    //add hover event --------------- http://bl.ocks.org/mostaphaRoudsari/b4e090bb50146d88aec4
-    // TODO - turned off because it needs to be optimized
-
-    // d3.select("." + key + "-pc")
-    // 	.on("mousemove", function() {
-    // 	    var mousePosition = d3.mouse(this);
-    // 	    highlightLineOnClick(mousePosition, true); //true will also add tooltip
-    // 	})
-    // 	.on("mouseout", function(){
-    // 		unhighlightLine();
-    // 	})
-    //   .on("click", function() {
-    //
-    //     var ids = source.coords.highlight().map(element => {
-    //       return element._id;
-    //     })
-    //
-    //     var features = source.data.features.filter(feature => {
-    //       return ids.includes(feature.id);
-    //     });
-    //
-    //     var types = source.types;
-    //
-    //     if (types.includes("Polygon")) {
-    //
-    //       features.forEach(feature => {
-    //           self.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates[0][0]);
-    //       });
-    //
-    //     } else if (types.includes("LineString")) {
-    //
-    //       features.forEach(feature => {
-    //           self.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates[0]);
-    //       });
-    //
-    //     } else if (types.includes("Point")) {
-    //
-    //       features.forEach(feature => {
-    //           self.addFilterLayerFeaturePopup(key, feature, feature.geometry.coordinates);
-    //       });
-    //     }
-    //
-    //     // if (features.length === 1) {
-    //     //
-    //     //   self.map.flyTo({
-    //     //     center: currentFeature.geometry.coordinates,
-    //     //     zoom: 15
-    //     //   });
-    //     //
-    //     // }
-    //
-    //   });
 
     function findAxes(testPt, cenPts){
     	// finds between which two axis the mouse is
@@ -1276,22 +1247,14 @@ class MapController {
       });
     }
 
-    //console.log(self.map.getStyle().layers);
-
     self.map.setFilter(key + '-base', filter); // NOTE - trying to speed it up ---
     self.map.setFilter(key + '-filter', filter);
 
-    var popups = source.popups;
+    var selected = source.selected.slice();
 
-    while(popups[0]) {
-      popups[0].remove();
-    }
-
-    source.selected.forEach(id => {
-      self.map.setFeatureState({source : key, id : id }, {selected : false });
+    selected.forEach(data => {
+      self.deselectFeature(key, data);
     });
-
-    source.selected = [];
 
     self.updateFilterLayerControllerSelection(key);
   }
@@ -1322,6 +1285,10 @@ class MapController {
 
     source.active = null;
     source.brushed = [];
+
+    source.selected.forEach(data => {
+      self.deselectFeature(key, data);
+    });
 
     self.updateFilterLayerController(key);
     self.updateFilter(key);
@@ -1583,33 +1550,144 @@ class MapController {
     colorButton.appendChild(colorImg);
     colorButton.addEventListener("click", e => {
       console.log("color");
+
+      var f = 1;
+      var d = 5;
+      var x = Math.round((e.clientX - d)/f)*f;
+      var y = Math.round((e.clientY - d)/f)*f;
+
+      var colorBox = document.createElement("div");
+      colorBox.classList.add("color-box");
+      colorBox.style.top = y + "px";
+      colorBox.style.left = x + "px";
+
+      Object.keys(colorbrewer).forEach(styleKey => {
+
+        var colorRangeKeys = Object.keys(colorbrewer[styleKey]);
+        var colorRange = colorbrewer[styleKey][colorRangeKeys[colorRangeKeys.length -1]];
+
+        var colorRangeBox = document.createElement("div");
+        colorRangeBox.classList.add("color-range-box");
+
+        colorRange.forEach(color => {
+
+          var colorRangeBlock = document.createElement("div");
+          colorRangeBlock.classList.add("color-range-block");
+          colorRangeBlock.style.background = color;
+
+          colorRangeBox.appendChild(colorRangeBlock);
+        });
+
+        colorRangeBox.addEventListener("click", e => {
+          console.log(state);
+
+          state.propertyStyle = colorRange;
+
+          var active = source.active;
+
+          source.brushed = [];
+
+          self.updateFilterLayerController(key);
+          self.updateFilterLayer(key, true);
+          self.updateFilterLayerPropertyStops(key);
+          self.updateFilter(key);
+
+          if (active != null) {
+            self.selectFilterLayerProperty(key, active);
+          }
+
+          colorBox.remove();
+          e.preventDefault();
+        });
+
+        colorBox.appendChild(colorRangeBox);
+      });
+
+      colorBox.addEventListener("mouseleave", e=> {
+        colorBox.remove();
+      })
+
+      document.body.appendChild(colorBox);
+
     });
 
     var zoomInImg = document.createElement("img");
     zoomInImg.classList.add("axis-menu-img");
-    zoomInImg.classList.add("disabled");
     zoomInImg.src = "img/plus-icon.png";
 
     var zoomInButton = document.createElement("div");
     zoomInButton.classList.add("axis-menu-item");
-    zoomInButton.title = "Zoom in";
     zoomInButton.appendChild(zoomInImg);
-    zoomInButton.addEventListener("click", e => {
-      console.log("zoom in");
-    });
+
+    if (state.propertyType !== "number") {
+      zoomInImg.classList.add("disabled");
+    } else {
+      zoomInButton.title = "Zoom into";
+      zoomInButton.addEventListener("click", e => {
+
+        console.log("zoom in");
+
+        var a = property;
+
+        var dimensions = source.coords.selection.selectAll(".dimension")[0];
+        var extent = d3.select(dimensions.filter(function(d) { return d.__data__ === a; })[0]).select(".extent");
+        var bounds = source.coords.brushExtents()[a];
+
+        if (bounds === undefined) {
+          return;
+        }
+
+        var filter = {
+          filterKey : a,
+          filter : (value) => {
+              return value[a] >= bounds[1] || value[a] <= bounds[0];
+          }
+        };
+
+        state.propertyClamp = bounds;
+
+        self.addFilters(key, [filter]);
+        e.stopPropagation();
+
+        var domain = source.coords.dimensions()[a].yscale.domain();
+        var extents = source.coords.brushExtents();
+
+        extents[a] = domain;
+
+        source.coords.brushExtents(extents);
+
+      });
+    }
 
     var zoomOutImg = document.createElement("img");
     zoomOutImg.classList.add("axis-menu-img");
-    zoomOutImg.classList.add("disabled");
     zoomOutImg.src = "img/minus-icon.png";
 
     var zoomOutButton = document.createElement("div");
     zoomOutButton.classList.add("axis-menu-item");
-    zoomOutButton.title = "Zoom out";
     zoomOutButton.appendChild(zoomOutImg);
-    zoomOutButton.addEventListener("click", e => {
-      console.log("zoom out");
-    });
+
+    if (state.propertyType !== "number") {
+      zoomOutImg.classList.add("disabled");
+    } else {
+      zoomOutButton.title = "Zoom out";
+      zoomOutButton.addEventListener("click", e => {
+
+        if (state.propertyClamp === undefined || state.propertyClamp === null) {
+          return;
+        }
+
+        console.log("zoom out");
+
+        var a = property;
+
+        source.brushed  = [];
+        state.propertyClamp = null;
+
+        self.removeFilter(key, a);
+
+      });
+    }
 
     input.appendChild(extrudeButton);
     input.appendChild(reverseButton);
@@ -1656,6 +1734,10 @@ class MapController {
       .color(color)
       .alpha(0.05)
       .render();
+
+    if (source.grid) {
+      source.grid.render();
+    }
 
     self.updateFilterLayerControllerSelection(key);
     self.updateFilterLayerMapPaintProperties(key, property);
@@ -1707,19 +1789,15 @@ class MapController {
           paint : "#616161",
         });
 
-        paintProperties.push({
-          id : key + "-filter",
-          type :"circle-stroke-color",
-          paint : "#616161"
-        });
       }
 
     } else {
 
       var state = source.states[property];
       var stops = state.propertyStops;
-      var min = 0.5;
-      var max = 3;
+      var ival = state.propertyInterval;
+      var min = 2;
+      var max = 10;
       var paint;
 
       if (state.propertyType === "number") {
@@ -1757,6 +1835,12 @@ class MapController {
           paint : paint,
         });
 
+        // paintProperties.push({
+        //   id : key + "-filter",
+        //   type : 'line-width',
+        //   paint : [ "+", min, [ "*", max, ["/", ["-", ['get', property], ival[0]] , ival[1] - ival[0]]]]
+        // });
+
       } else  if (source.types.includes("Polygon") || source.types.includes("MultiPolygon") ) {
 
         paintProperties.push({
@@ -1771,6 +1855,12 @@ class MapController {
           id : key + "-filter",
           type :"circle-color",
           paint : paint
+        });
+
+        paintProperties.push({
+          id : key + "-filter",
+          type :"circle-radius",
+          paint : [ "+", min, [ "*", max, ["/", ["-", ['get', property], ival[0]] , ival[1] - ival[0]]]]
         });
 
       }
@@ -1854,7 +1944,13 @@ class MapController {
 
       } else if (state.propertyType === "string") {
 
-        // TODO ---
+         var nstops = [];
+
+        for (var i = 0; i<state.propertyCategories.length; i++) {
+          nstops.push([state.propertyCategories[i], style[i % style.length]])
+        }
+
+        state.propertyStops = nstops;
 
       } else {
 
@@ -2129,6 +2225,14 @@ class MapController {
               width = element.clientWidth - margin.left - margin.right,
               height = element.clientHeight - margin.top - margin.bottom;
 
+          if (height <= 0) {
+            height = 200 - margin.top - margin.bottom;
+          }
+
+          if (width <= 0) {
+            width = 200 - margin.left - margin.right;
+          }
+
           var x = d3.scale.ordinal().rangeRoundBands([0, width], .05);
           var y = d3.scale.linear().range([height, 0]);
 
@@ -2344,7 +2448,8 @@ function buildGeoJsonLineStringFilterLayer(source) {
        'line-width': [
            "interpolate", ["linear"], ["zoom"],
            10, 0.5,
-           20, 2
+           13, 2,
+           20, 10,
        ],
        'line-blur': [
            "interpolate", ["linear"], ["zoom"],
@@ -2356,34 +2461,20 @@ function buildGeoJsonLineStringFilterLayer(source) {
  };
 }
 
+
 function buildGeoJsonPointBaseLayer(source) {
   return {
 
     id : source.source + '-base',
     source : source.source,
     type : "circle",
-    minzoom : 10,
+    minzoom : 0,
     filter : source.filtered,
     paint : {
-        "circle-radius":  [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 0,
-            18, 3,
-            25, 10
-        ],
+        "circle-radius": 2,
         "circle-color": "rgba(100,100,100, 0.1)",
-        //"circle-stroke-color": "rgba(100,100,100, 0.1)",
         "circle-stroke-width": 0,
         "circle-opacity": 1
-        // "circle-opacity": [
-        //     "interpolate",
-        //     ["linear"],
-        //     ["zoom"],
-        //     10, 0,
-        //     20, 1
-        // ]
     }
 
   };
@@ -2396,27 +2487,12 @@ function buildGeoJsonPointFilterLayer(source) {
     source : source.source,
     type : "circle",
     filter : source.filtered,
-    minzoom : 10,
+    minzoom : 0,
     paint : {
-        "circle-radius":  [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 0,
-            18, 3,
-            25, 10
-        ],
+        "circle-radius": 2,
         "circle-color": "#616161",
-        //"circle-stroke-color": "#616161",
         "circle-stroke-width": 0,
         "circle-opacity": 1
-        // "circle-opacity": [
-        //     "interpolate",
-        //     ["linear"],
-        //     ["zoom"],
-        //     7, 0,
-        //     8, 1
-        // ]
     }
 
   };
@@ -2657,18 +2733,8 @@ function style(property) {
 
   var styles = {
 
-    "default" :     ["#ffffd9","#edf8b1","#c7e9b4","#7fcdbb","#41b6c4","#1d91c0","#225ea8","#253494","#081d58"],
+    "default" :     colorbrewer.Viridis[10],
     "catchment" :   [ '#d74518', '#fdae61', '#5cb7cc', '#b7b7b7'],
-    "far" :         ['#fff7f3', '#fcc5c0', '#f768a1', '#ae017e', '#49006a'],
-    "density" :     ['#fff7f3','#c6dbef', '#6baed6', '#2171b5', '#08306b'],
-    "betweenness" : colorbrewer.BuPu[9],
-    "closeness" :   colorbrewer.PuBuGn[9],
-    "proximity" :   colorbrewer.BuPu[9],
-    "area" :        colorbrewer.BuPu[9],
-    "angle" :       colorbrewer.BuPu[9],
-    "orientation" : colorbrewer.BuPu[9],
-    "vis" :         colorbrewer.PuRd[9],
-    "solar" :       colorbrewer.YlOrBr[9],
     "category" :    colorbrewer.Paired[12],
 
   }
