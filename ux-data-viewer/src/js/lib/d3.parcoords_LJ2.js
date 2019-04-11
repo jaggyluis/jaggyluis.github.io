@@ -1,6 +1,8 @@
-d3.parcoords = function(config) {
+d3.parcoords = function(source, config) {
   var __ = {
+    source : source, // special mapcontroller source ---
     data: [],
+    clamp: {},
     highlighted: [],
     dimensions: {},
     dimensionTitleRotation: 0,
@@ -10,7 +12,9 @@ d3.parcoords = function(config) {
     mode: "default",
     rate: 20,
     width: 600,
+    minWidth: 200,
     height: 300,
+    minHeight: 200,
     margin: { top: 24, right: 0, bottom: 12, left: 0 },
     nullValueSeparator: "undefined", // set to "top" or "bottom"
     nullValueSeparatorPadding: { top: 8, right: 0, bottom: 8, left: 0 },
@@ -46,6 +50,14 @@ var pc = function(selection, label) {
   __.height = selection[0][0].clientHeight;
   __.label =  (label || null);
 
+  if (__.width < __.minWidth) {
+    __.width = __.minWidth;
+  }
+
+  if (__.height < __.minHeight) {
+    __.height = __.minHeight;
+  }
+
   // canvas data layers
   ["marks", "foreground", "brushed", "highlight"].forEach(function(layer) {
     canvas[layer] = selection
@@ -65,7 +77,7 @@ var pc = function(selection, label) {
 
   return pc;
 };
-var events = d3.dispatch.apply(this,["render", "resize", "highlight", "brush", "brushend", "axesreorder"].concat(d3.keys(__))),
+var events = d3.dispatch.apply(this,["render", "resize", "highlight", "brush", "brushend", "axesreorder", "rangeset", "overflow"].concat(d3.keys(__))),
     w = function() { return __.width - __.margin.right - __.margin.left; },
     h = function() { return __.height - __.margin.top - __.margin.bottom; },
     flags = {
@@ -253,10 +265,13 @@ pc.autoscale = function() {
   d3.keys(__.dimensions).forEach(function(k) {
 
     if (!__.dimensions[k].yscale || __.dimensions[k].yscale){
-      __.dimensions[k].yscale = defaultScales[__.dimensions[k].type](k);
+      if (!__.clamp[k]) {
+        __.dimensions[k].yscale = defaultScales[__.dimensions[k].type](k);
+      }
+
     }
 
-    if (!yscale[k]) {
+    if (!yscale[k]) { // store a universal dimension for each parameter for reference - LJ
       yscale[k] = defaultScales[__.dimensions[k].type](k);
     }
 
@@ -408,6 +423,11 @@ pc.render = function() {
   pc.autoscale();
 
   pc.render[__.mode]();
+
+  if (d3.keys(__.dimensions).length === 1) { // LJ ---
+      //pc.axisDots(1);
+      pc.axisPlot();
+  }
 
   events.render.call(this);
   return this;
@@ -577,23 +597,199 @@ pc.shadows = function() {
 	return this;
 };
 
-// draw dots with radius r on the axis line where data intersects
+// // draw dots with radius r on the axis line where data intersects
+// pc.axisDots = function(r) {
+// 	var r = r || 0.1;
+// 	var ctx = pc.ctx.marks;
+// 	var startAngle = 0;
+// 	var endAngle = 2 * Math.PI;
+// 	ctx.globalAlpha = d3.min([ 1 / Math.pow(__.data.length, 1 / 2), 1 ]);
+// 	__.data.forEach(function(d) {
+// 		d3.entries(__.dimensions).forEach(function(p, i) {
+// 			ctx.beginPath();
+// 			ctx.arc(position(p), __.dimensions[p.key].yscale(d[p]), r, startAngle, endAngle);
+// 			ctx.stroke();
+// 			ctx.fill();
+// 		});
+// 	});
+// 	return this;
+// };
+
+// draw dots with radius r on the axis line where data intersects -- LJ modification ---
 pc.axisDots = function(r) {
 	var r = r || 0.1;
 	var ctx = pc.ctx.marks;
 	var startAngle = 0;
 	var endAngle = 2 * Math.PI;
-	ctx.globalAlpha = d3.min([ 1 / Math.pow(__.data.length, 1 / 2), 1 ]);
-	__.data.forEach(function(d) {
+	ctx.globalAlpha = 1;
+	__.data.forEach(function(d, j) {
+
+    ctx.fillStyle = d3.functor(__.color)(d, j);
+    ctx.strokeStyle = d3.functor(__.color)(d, j);
+
 		d3.entries(__.dimensions).forEach(function(p, i) {
 			ctx.beginPath();
-			ctx.arc(position(p), __.dimensions[p.key].yscale(d[p]), r, startAngle, endAngle);
+			ctx.arc(position(p.key), __.dimensions[p.key].yscale(d[p.key]), r, startAngle, endAngle);
 			ctx.stroke();
 			ctx.fill();
 		});
 	});
 	return this;
 };
+
+pc.axisPlot = function() {
+
+  var r = r || 0.1;
+  var ctx = pc.ctx.marks;
+  var startAngle = 0;
+  var endAngle = 2 * Math.PI;
+  ctx.globalAlpha = 0.5;
+
+  var allBins = bin_data();
+
+  Object.keys(allBins).forEach(b => {
+
+    var property = b;
+    var dimension = __.dimensions[b];
+    var bins = allBins[b];
+
+    bins.forEach(bin => {
+
+      var dummy = {};
+      dummy[property] = bin.value;
+
+      ctx.fillStyle = d3.functor(__.color)(dummy, bin.index);
+      ctx.strokeStyle = d3.functor(__.color)(dummy, bin.index);
+
+      ctx.beginPath();
+      ctx.arc(position(property), __.dimensions[property].yscale(bin.value), 1 + (bin.perc * 20), startAngle, endAngle);
+      ctx.stroke();
+      ctx.fill();
+    });
+
+  });
+}
+
+function bin_data() {
+
+  var allBins = {};
+  var active = __.source.active;
+
+  d3.entries(__.dimensions).forEach(function(p, i) {
+
+    var state = __.source.states[p.key];
+    var property = p.key;
+    var bins = [];
+
+    if (active !== null && property !== active) {
+      return;
+    }
+
+    if (state.propertyType === "number") {
+
+      state.propertyStops.forEach((s, i) => {
+
+        bins.push({
+          value : parseFloat(Math.round(s[0] * 100) / 100).toFixed(2),
+          data : [],
+          count : 0,
+          index : i,
+          min : null,
+          max : null,
+          perc : 0,
+          valid : true
+        });
+
+      });
+
+      __.data.forEach(d => {
+
+        var index = 0;
+
+        for (var i = 0; i < bins.length ; i++) {
+
+          if (bins[i].value > d[property]) {
+            break;
+          }
+
+          index = i;
+        }
+
+        bins[index].count+=1;
+        bins[index].perc = bins[index].count / __.data.length;
+        bins[index].data.push(d);
+
+        if (bins[index].min == null || bins[index].min > d[property]) {
+          bins[index].min = d[property];
+        }
+
+        if (bins[index].max == null || bins[index].max < d[property]) {
+          bins[index].max = d[property];
+        }
+
+      });
+
+    } else if (state.propertyType === "string") {
+
+      state.propertyStops.forEach((s, i) => {
+
+        var valid = true;
+
+        Object.keys(source.filters).forEach(filter => {
+
+          var temp = {};
+          temp[property] = s[0];
+
+          if (source.filters[filter](temp)) {
+            valid = false;
+          }
+
+        });
+
+
+        bins.push({
+          value : s[0].toString(),
+          data : [],
+          count : 0,
+          index : i,
+          perc : 0,
+          valid : valid
+        });
+
+      });
+
+      __.data.forEach(d => {
+
+        var index = 0;
+
+        for (var i = 0; i < bins.length ; i++) {
+
+          index = i;
+
+          if (bins[i].value === d[property]) {
+            break;
+          }
+
+        }
+
+        bins[index].count+=1;
+        bins[index].perc = bins[index].count / __.data.length;
+        bins[index].data.push(d);
+
+      });
+
+    } else {
+
+      // TODO ---
+    }
+
+    allBins[property] = bins;
+
+  });
+
+  return allBins;
+}
+
 
 // draw single cubic bezier curve
 function single_curve(d, ctx) {
@@ -706,6 +902,51 @@ function flipAxisAndUpdatePCP(dimension) {
   pc.render();
 }
 
+pc.scaleAxis = function(dimension, extent) {
+
+  if (extent === undefined || extent === null) {
+
+    if (__.clamp[dimension]) {
+      delete __.clamp[dimension];
+    }
+
+    if (yscale[dimension]) {
+      delete yscale[dimension];
+    }
+
+    extent = __.dimensions[dimension].yscale.domain();
+
+    pc.autoscale().updateAxes().render();
+
+  } else {
+
+    pc.scale(dimension, extent);
+
+    __.clamp[dimension] = extent;
+
+    d3.select(this.parentElement)
+      .transition()
+        .duration(__.duration)
+        .call(axis.scale(__.dimensions[dimension].yscale));
+
+    pc.updateAxes().render();
+  }
+
+  events.rangeset.call(pc, extent, dimension);
+
+  return this;
+}
+
+pc.resetAxis = function() {
+
+  __.clamp = {};
+  yscale = {};
+
+  pc.autoscale().updateAxes().render();
+
+  return this;
+}
+
 function rotateLabels() {
   var delta = d3.event.deltaY;
   delta = delta < 0 ? -5 : delta;
@@ -765,7 +1006,7 @@ function dimensionValListener(d) {
     var h = 15;
     var w = 100;
 
-    var form = p_el.append("foreignObject");
+    var form = p_el.append("foreignObject").attr("class", "axis-object");
 
     var input = form
         .attr({
@@ -808,25 +1049,19 @@ function dimensionValListener(d) {
         });
 }
 
-//LJ ---
-function dimensionCategoryListener(d) {
-
-}
-
-//LH from https://rawgit.com/mcwillso/parallel-coordinates/Column-Fields/d3.parcoords.js
 function updateMaxMinExtents(d, element, parent, val) {
 
     val = +parseFloat(val);
 
     try {
 
-      parent.select("foreignObject").remove();
+      parent.select("foreignObject.axis-object").remove();
 
-      console.log("form removed");
+      //console.log("form removed");
 
     } catch (e) {
 
-      console.log("form already removed");
+      //console.log("form already removed");
 
     } finally {
 
@@ -837,14 +1072,16 @@ function updateMaxMinExtents(d, element, parent, val) {
     var min = +dimensionMin(d);
     var max = +dimensionMax(d);
 
-    var isMin = element.attr('class') === 'axis-min ' + d;
+    var type = element.attr('class') === 'axis-min ' + d ? "min" : "max";
 
     var cmin =  +parseFloat(parent.select('.axis-min').text());
     var cmax =  +parseFloat(parent.select('.axis-max').text());
 
-    val = val <= min ? min : val >= max ? max : val;
+    var forceMin = val < min;
+    var forceMax = val > max;
 
-    var bound = isMin ? cmax : cmin;
+    var bound = type === 'min' ? cmax : cmin; // this is to ensure that the values are always in order ---
+    var property = d;
     var ebb = [];
 
     if (val < bound) {
@@ -859,7 +1096,7 @@ function updateMaxMinExtents(d, element, parent, val) {
     }
 
     if (ebb[0] === ebb[1]) {
-      if (isMin) {
+      if (type === 'min') {
         ebb[1] = max;
       } else {
         ebb[0] = min;
@@ -872,24 +1109,13 @@ function updateMaxMinExtents(d, element, parent, val) {
 
     extents[d] = ebb;
 
-    if (!(extents[d][0] === min && extents[d][1] === max)) {
-      pc.brushExtents(extents);
-    }
+    pc.brushExtents(extents);
 
     element.text(val);
-}
 
-function addClamp(g) {
-  g.selectAll(".clamp").remove();
-
-  // console.log(d3.select(g));
-  //
-  // g.append("rect")
-  //   .attr("class", "clamp")
-  //   .attr("x", -30)
-  //   .attr("y", -40)
-  //   .attr("width",  60)
-  //   .attr("height", h() + 90);
+    if (forceMin || forceMax) {
+      events.overflow.call(pc, ebb, d);
+    }
 }
 
 //LH from https://rawgit.com/mcwillso/parallel-coordinates/Column-Fields/d3.parcoords.js
@@ -1015,7 +1241,6 @@ pc.createAxes = function() {
       //.on("wheel", rotateLabels);
 
   addMaxMinText(g); //LH
-  addClamp(g); // LJ
 
   if (__.nullValueSeparator=="top") {
     pc.svg.append("line")
@@ -1078,7 +1303,6 @@ pc.updateAxes = function() {
       //.on("wheel", rotateLabels);
 
   addMaxMinText(g_data); // LH
-  addClamp(g_data); // LJ
 
   // Update
   g_data.attr("opacity", 0);

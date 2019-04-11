@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "temp_site_4326",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": 1 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 151.2040075, -33.8834082 ], [ 151.2047593, -33.8837546 ], [ 151.2038465, -33.8852078 ], [ 151.2031528, -33.884873 ], [ 151.2040075, -33.8834082 ] ] ] } }
+]
+}

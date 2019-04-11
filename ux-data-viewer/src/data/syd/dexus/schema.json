@@ -1,0 +1,125 @@
+{
+  "title" : "Dexus Central West",
+  "type" : "SSDataSchema",
+  "options" : {
+    "draw" : false,
+    "data" : false,
+    "download" : false,
+    "active" : "buildings",
+    "camera" : "camera3"
+  },
+  "cameras" : [
+    {
+      "id" : "camera1",
+      "center" : [151.19766021867486,-33.887785766720974],
+      "zoom" : 14.60564875227261,
+      "pitch" : 60,
+      "bearing" : -18.400000000000087
+    },
+    {
+      "id" : "camera2",
+      "center": [151.19816090006066,-33.88510494417777],
+      "zoom": 14.302824376136305,
+      "bearing": 0,
+      "pitch": 0
+    },
+    {
+      "id" : "camera3",
+      "center": [151.19669972384213,-33.886953314581575],
+      "zoom": 14.302824376136305,
+      "bearing": 0,
+      "pitch": 50
+    }
+  ],
+  "boundaries" : [
+    {
+      "id" : "site",
+      "url" : "data/syd/dexus/boundary.geojson",
+      "options" : {}
+    }
+  ],
+  "schemas" : [
+    {
+      "id" : "buildings",
+      "url" : "data/syd/dexus/building_merge.geojson",
+      "options" : {
+        "visible" : true,
+        "clean" : true,
+        "base" : "FloorRL",
+        "height" : "RoofRL",
+        "active" : "MAJORUSE",
+        "properties" : {
+          "filtered" : [
+            "Percent_FnB",
+            "Percent_HigherEd",
+            "Percent_ICT",
+            "Percent_LifeScience",
+            "Percent_OtherOffice",
+            "Total_Area",
+            "MAJORUSE",
+            "typology",
+            "FloorRL",
+            "RoofRL"
+          ],
+          "hidden" : [
+            "FloorRL",
+            "RoofRL"
+          ],
+          "selected" : [
+            "Total_Area",
+            "MAJORUSE",
+            "typology",
+            "Percent_FnB",
+            "Percent_HigherEd",
+            "Percent_ICT",
+            "Percent_LifeScience",
+            "Percent_OtherOffice"
+          ]
+        },
+        "style" : [
+          {
+            "property" : "Total_Area",
+            "color" : "YlGnBu",
+            "reverse" : true,
+            "domain" : [0, 1000],
+            "brush" : [50, 100]
+          }
+        ]
+      }
+    },
+    {
+      "id" : "site",
+      "url" : "data/syd/dexus/site.geojson",
+      "options" : {
+        "visible" : true,
+        "clean" : false,
+        "defaults" : {
+          "string" : "invalid data",
+          "number" : -1,
+          "date" : null,
+          "boolean" : false
+        },
+        "properties" : {
+          "filtered" : []
+        },
+        "features" : {
+          "selected" : [0]
+        }
+      }
+    },
+    {
+      "id" : "context",
+      "url" : "data/syd/buildings.geojson",
+      "options" : {
+        "visible" : true,
+        "height" : "height",
+        "boundary" : {
+          "xor" : true,
+          "filtered" : [
+            "site"
+          ]
+        }
+      }
+    }
+  ]
+}

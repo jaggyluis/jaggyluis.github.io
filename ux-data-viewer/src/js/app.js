@@ -10,6 +10,7 @@ if (!('remove' in Element.prototype)) {
   };
 }
 
+// TODO - make this a function to redude global namespace ---
 // map setup ---
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiamFnZ3lsdWlzIiwiYSI6ImNqcmdrdWRyNzFlenQ0M3BvODZ6ZjJwcnUifQ.T8htDIqiD0Vy8WOEE7ZssQ';
@@ -31,10 +32,11 @@ const map = new mapboxgl.Map({
 
 const mapController = new MapController(map);
 
+console.log(mapController);
+
 // interface setup ---
 
 const interface = document.getElementById("interface");
-
 const topDiv = document.getElementById("top");
 
 const left = document.getElementById("left");
@@ -85,112 +87,125 @@ function areFiltersPresent() {
 //     get: function() {return dpi / 96}
 // });
 
-var hiddenProperties = [
-  "_id",
-  "_far",
-  "_osr",
-  "_dist__site",
-  "org_id",
-  "shape_area",
-  "shape_perimeter",
-  "site_intersects",
-  "text",
-  "subclasses",
-  "linetype",
-  "layer",
-  "extendeden",
-  "entityhand",
-  "kept",
-  "perimeter_",
-  "site__intersects",
-  "misc",
-  "recreati_1",
-  "source",
-  "target",
-  "id",
-  "lat",
-  "lon"
-]
+var SCHEMA = null;
+var OPTIONS = null;
 
-var schemeBase = {
-  id : "base",
-  data : {
-    buildings :   "data/syd/gansw/buildings_existing.geojson",
-    openSpaces :  "data/syd/gansw/public_open_spaces.geojson",
-    blocks :      "data/syd/blocks.geojson",
-    points :      "data/syd/points.geojson",
-    ways :        "data/syd/ways.geojson"
+drop(document.getElementsByTagName('body')[0], ['json'], (fileData, fileName) => {
+
+  var json = JSON.parse(fileData);
+
+  if (json.type !== "SSDataSchema" || SCHEMA !== null) {
+    return;
   }
-}
 
-var scheme1m = {
-  id : "1m",
-  data : {
-    blocks :      "data/syd/gansw/blocks_pr_1mil.geojson",
-    buildings :   "data/syd/gansw/buildings_pr_1mil.geojson",
-    parks :       "data/syd/gansw/parks_pr_1mil.geojson",
-    ways :        "data/syd/gansw/ways_1mil_gc.geojson",
-  }
-}
+  SCHEMA = json; // singleton ---
+  OPTIONS = json.options || null; // global ---
 
-var scheme700k = {
-  id : "700k",
-  data : {
-    blocks :      "data/syd/gansw/blocks_pr_700k.geojson",
-    buildings :   "data/syd/gansw/buildings_pr_700k.geojson",
-    parks :       "data/syd/gansw/parks_pr_700k.geojson",
-    ways :        "data/syd/gansw/ways_700k_gc.geojson",
-  }
-}
+  function loadBoundaries(cb) {
 
-var schemes = [
-  schemeBase,
-  scheme1m,
-  scheme700k
-]
+    var boundaries = json.boundaries.length ;
 
-map.on("load", function() {
+    json.boundaries.forEach(boundary => {
+      d3.json(boundary.url, d => {
+        loadDataBoundary(d, boundary.id, boundary.options || {});
 
-  mapController.setLoading(true);
+        boundaries -= 1;
 
-  var count = 0;
-
-  schemes.forEach(scheme => {
-
-    Object.keys(scheme.data).forEach(key => {
-
-      count += 1;
-
-      d3.json(scheme.data[key], (d) => {
-
-        console.log(key, count);
-
-        loadDataLayer(d, key + '_' + scheme.id);
-
-        count -= 1;
-
-        if (count <= 0) {
-          mapController.setLoading(false);
+        if (!boundaries && cb) {
+          cb();
         }
 
       });
+    });
+  }
+
+  function loadSchemas(cb) {
+
+    var schemas = json.schemas.length;
+
+    json.schemas.forEach(schema => {
+
+      console.log(schema);
+
+      d3.json(schema.url, d => {
+        loadDataLayer(d, schema.id, schema.options || {});
+
+        schemas -= 1;
+
+        if (!schemas && cb) {
+          cb();
+        }
+
+      });
+    });
+  }
+
+  function loadCameras(cb) {
+
+    json.cameras.forEach(camera => {
+      loadDataCamera(camera, camera.id, camera.options || {});
 
     });
-  });
+  }
+
+  var tt = document.getElementById("tt");
+  var ts = document.createElement("div");
+  ts.id = "ts";
+  ts.innerHTML = json.title || "";
+
+  tt.appendChild(ts);
+
+  if (json.options) {
+
+    if (json.options.draw === true || json.options.draw === false) { // strict boolean check
+      mapController.toggleDraw(json.options.draw);
+    }
+
+    if (json.options.data === false) {
+      left.classList.add("collapsed");
+    }
+  }
+
+  if (json.cameras && json.cameras.length) {
+    loadCameras();
+  }
+
+  if (json.options && json.options.camera) {
+    mapController.toggleCamera(json.options.camera);
+  }
+
+  if (json.boundaries && json.boundaries.length) {
+    loadBoundaries(loadSchemas);
+
+  } else {
+    if (json.schemas && json.schemas.length) {
+      loadSchemas();
+    }
+  }
 
 });
 
+// keep the default loader for additional files ---
 drop(document.getElementsByTagName('body')[0], ['geojson'], (fileData, fileName) => {
 
-  loadDataLayer(JSON.parse(fileData), fileName.split(".")[0]);
+  loadDataLayer(JSON.parse(fileData), fileName.split(".")[0], {});
 
 });
 
-function loadDataLayer(data, label, open) {
+function loadDataCamera(data, label, options) {
+  mapController.addCamera(label, data, options);
+}
 
-  mapController.addSource(label, data);
-  mapController.addLayer(label);
-  mapController.toggleLayer(label, false); // NOTE - init off
+function loadDataBoundary(data, label, options) {
+  mapController.addBoundary(label, data, options);
+}
+
+function loadDataLayer(data, label, options) {
+  mapController.addSource(label, data, options);
+  mapController.addLayers(label);
+  mapController.toggleLayers(label, false); // NOTE - init off ---
+
+  var hidden = (options.properties ? options.properties.hidden || [] : []).concat("_id", "lat", "lon");
 
   // build the box first ---
 
@@ -232,17 +247,19 @@ function loadDataLayer(data, label, open) {
     console.log("download");
 
     var data = mapController.getSourceData(label).slice();
-    var properties = mapController.getSourceKeyProperties(label, true, false).slice();
+    var properties = mapController.getProperties(label, true, false).slice();
     properties.push("_id");
 
     data.sort(function(a,b) {
       return a._id - b._id;
     });
 
-    //exportObjArrayToCSV(label + "_data", data, properties); //NOTE - this is off for testing ---
+    exportObjArrayToCSV(label + "_data", data, properties); //NOTE - this is off for testing ---
   });
 
-  boxHeader.appendChild(downloadButton);
+  if (!(OPTIONS && OPTIONS.download === false)) {
+    boxHeader.appendChild(downloadButton);
+  }
 
   var sheetImg = document.createElement("img");
   sheetImg.classList.add("box-menu-img");
@@ -292,7 +309,7 @@ function loadDataLayer(data, label, open) {
 
   boxContent.appendChild(boxCoords);
 
-  mapController.addFilterLayerController(label, boxCoords);
+  mapController.addCoordsView(label, boxCoords);
 
   // boxLabel.addEventListener("click", e=> { // disable ---
   //
@@ -315,7 +332,7 @@ function loadDataLayer(data, label, open) {
   boxSheet.id = label + "-sheet";
   boxContent.appendChild(boxSheet);
 
-  mapController.addFilterLayerSheet(label, boxSheet);
+  mapController.addSheetView(label, boxSheet);
 
   sheetButton.addEventListener("click", e => {
 
@@ -470,6 +487,66 @@ function loadDataLayer(data, label, open) {
 
   docHeader.appendChild(docFilterButton);
 
+  var docMoveDownImg = document.createElement("img");
+  docMoveDownImg.classList.add("document-menu-img");
+  //docViewImg.classList.add("selected");
+  docMoveDownImg.style = " transform: rotate(90deg); ";
+  docMoveDownImg.src = "img/left-arrow-icon.png";
+
+  var docMoveDownButton = document.createElement("div");
+  docMoveDownButton.classList.add("document-menu-item");
+  docMoveDownButton.classList.add("document-order-button");
+  docMoveDownButton.title = "Move Layer Down";
+  docMoveDownButton.selected = false;
+  docMoveDownButton.appendChild(docMoveDownImg);
+
+  docMoveDownButton.addEventListener("click", e => {
+
+    var nodes = Array.prototype.slice.call(lscroll.children );
+    var index = nodes.indexOf(doc);
+
+    if (index == -1 || index == 0) {
+      return;
+    }
+
+    mapController.moveSourceDown(label);
+
+    lscroll.insertBefore(doc, lscroll.children[index -1]);
+
+  });
+
+  docHeader.appendChild(docMoveDownButton);
+
+  var docMoveUpImg = document.createElement("img");
+  docMoveUpImg.classList.add("document-menu-img");
+  //docViewImg.classList.add("selected");
+  docMoveUpImg.style = " transform: rotate(90deg); ";
+  docMoveUpImg.src = "img/right-arrow-icon.png";
+
+  var docMoveUpButton = document.createElement("div");
+  docMoveUpButton.classList.add("document-menu-item");
+  docMoveUpButton.classList.add("document-order-button");
+  docMoveUpButton.title = "Move Layer Up";
+  docMoveUpButton.selected = false;
+  docMoveUpButton.appendChild(docMoveUpImg);
+
+  docMoveUpButton.addEventListener("click", e => {
+
+    var nodes = Array.prototype.slice.call(lscroll.children );
+    var index = nodes.indexOf(doc);
+
+    if (index == -1 || index == nodes.length -1) {
+      return;
+    }
+
+    mapController.moveSourceUp(label);
+
+    lscroll.insertBefore(doc, lscroll.children[index + 2]);
+
+  });
+
+  docHeader.appendChild(docMoveUpButton);
+
   var docContent = document.createElement("div");
   docContent.classList.add("document-content");
   docContent.classList.add("collapsed"); // adde-d ---
@@ -500,14 +577,14 @@ function loadDataLayer(data, label, open) {
         docViewButton.selected = false;
 
         docViewImg.classList.remove("selected");
-        mapController.toggleLayer(label, false);
+        mapController.toggleLayers(label, false);
 
       } else {
 
         docViewButton.selected = true;
 
         docViewImg.classList.add("selected");
-        mapController.toggleLayer(label, true); // move this to new button ---
+        mapController.toggleLayers(label, true); // move this to new button ---
       }
   });
 
@@ -543,21 +620,25 @@ function loadDataLayer(data, label, open) {
       }
   });
 
-  if (open === undefined || !open) {
-    docLabel.click();
+  if (options.visible === true) {
+    docViewButton.click();
+  }
+
+  if (OPTIONS && OPTIONS.active === label) {
+    docFilterButton.click();
   }
 
   var propertyCheckBoxes = [];
 
-  mapController.getSourceKeyProperties(label).forEach((property, index) => {
+  mapController.getProperties(label).forEach((property, index) => {
 
-    var propertyState = mapController.getSourceKeyPropertyState(label, property);
+    var propertyState = mapController.getPropertyState(label, property);
 
     var propertyDiv = document.createElement("div");
     propertyDiv.id = label + "-" + property;
     propertyDiv.classList.add("document-item");
 
-    if (hiddenProperties.includes(property)) {
+    if (hidden.includes(property)) {
       propertyDiv.classList.add("collapsed");
     }
 
@@ -619,7 +700,7 @@ function loadDataLayer(data, label, open) {
             tuple[3].classList.add("collapsed");
           }
 
-          mapController.updateFilterLayerProperties(label, tuple[0], false);
+          mapController.toggleProperty(label, tuple[0], false);
         });
 
       }
@@ -627,7 +708,7 @@ function loadDataLayer(data, label, open) {
       if (e.target.checked) {
 
         propertyLabel.classList.add("selected");
-        mapController.updateFilterLayerProperties(label, property, true);
+        mapController.toggleProperty(label, property, true);
 
         if (propertyContent !== null) {
           propertyContent.classList.remove("collapsed");
@@ -636,7 +717,7 @@ function loadDataLayer(data, label, open) {
       } else {
 
         propertyLabel.classList.remove("selected");
-        mapController.updateFilterLayerProperties(label, property, false);
+        mapController.toggleProperty(label, property, false);
 
         if (propertyContent !== null) {
           propertyContent.classList.add("collapsed");
@@ -750,6 +831,10 @@ function loadDataLayer(data, label, open) {
         });
 
       });
+    }
+
+    if (options.properties && options.properties.selected && options.properties.selected.includes(property)) {
+      propertyCheckBox.click();
     }
 
   });

@@ -38,6 +38,24 @@ img {
   pointer-events: none;
 }
 
+#tt {
+  font-family: 'Roboto', Helvetica, Arial, sans-serif;
+  position: absolute;
+  right: 183px;
+  top: 17px;
+  font-size: 30px;
+  text-align: right;
+  font-size: 45px;
+  font-weight: lighter;
+  line-height: 1;
+  letter-spacing: -4px;
+  border-right: 2px solid black;
+  padding-right: 18px;
+  height: 46px;
+  flex-direction: row;
+  display: flex;
+}
+
 #ss {
   width: 100px;
   position: absolute;
@@ -54,6 +72,10 @@ img {
 
 #ss img, #wb img {
   width: 100%;
+}
+
+#ts {
+  margin-left: 15px;
 }
 
 #map {
@@ -77,12 +99,13 @@ img {
 }
 
 #loader {
-  width: 30px;
+  /* width: 30px;
   height: 30px;
   display: block;
   top: 25px;
   right: 180px;
-  position: absolute;
+  position: absolute; */
+  height: 100%;
 }
 
 #interface {
@@ -167,6 +190,10 @@ img {
 .document-menu-item {
   margin-top: 5px;
   padding-right: 10px;
+}
+
+.document-order-button {
+
 }
 
 .document-menu-img {
@@ -300,6 +327,8 @@ img {
 .box-menu-item {
   margin-top: 5px;
   padding-right: 10px;
+  width: 30px;
+  min-width: 20px;
 }
 
 .box-menu-img {
@@ -353,6 +382,7 @@ img {
   display: flex;
   height: 100%;
   margin-left: 10px;
+  position: relative;
 }
 
 .legend-div {
@@ -409,6 +439,22 @@ img {
 .legend-hist {
   width: 200px;
   height: 200px;
+  //position: sticky;
+  //top: 50px;
+}
+
+.legend-plot {
+  width: 200px;
+  height: 50px;
+  //position: sticky;
+  //top: 250px;
+}
+
+.legend-plot-avg {
+  border-left: 1px solid;
+  font-size: 9px;
+  padding-left: 4px;
+  padding-top: 4px;
 }
 
 .legend-item {
@@ -577,15 +623,20 @@ img {
 }
 
 .axis-menu {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: row;
-
+    height: 100%;
+    text-align: center;
 }
 
 .axis-menu-item {
-  margin: auto;
+  margin: 0 5px;
+  display: inline-block;
+}
+
+.axis-bracket {
+  display: inline-block;
+  position: relative;
+  top: -2px;
+  margin: 0px 5px;
 }
 
 .axis-menu-img {
@@ -641,8 +692,51 @@ img {
   margin-bottom: 8px;
 }
 
+.row.stats {
+  position: sticky;
+  top: 24px;
+  /* border: 1px solid; */
+  /* border-bottom: 1px solid #f1f1f1; */
+  padding-top: 8px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  padding-bottom: 8px;
+  background: white;
+  z-index: 1;
+  pointer-events: none;
+  height: 18px;
+}
+
+.row.highlight {
+  position: sticky;
+  top: 58px;
+  margin: 0px;
+  /* height: auto; */
+  /* padding-top: 8px; */
+  background: #ffffff;
+  /* border-bottom: 1px solid black; */
+  border-bottom: 1px solid #f1f1f1;
+  /* margin-top: 8px; */
+  z-index: 2;
+  padding-bottom: 8px;
+}
+
+.row.highlight:hover {
+  background-color: white;
+}
+
 .row:hover {
   background-color: #e2e2e261;
+  /* border-left: 2px solid black;
+  border-bottom: 1px solid black;
+  margin-bottom: -1px; */
+}
+
+.row.hovered {
+  background-color: #e2e2e261;
+  /* border-left: 2px solid black;
+  border-bottom: 1px solid black;
+  margin-bottom: -1px; */
 }
 
 .cell.col {
@@ -672,10 +766,20 @@ img {
   margin-right: 8px;
 }
 
+.cell.stats {
+  height: 30px;
+  overflow: visible;
+}
+
 .cell-bar {
   height: 10px;
   width: 10px;
   background: lightgrey;
+}
+
+.cell-bar.stats {
+  //border-top: 1px solid black;
+  background: black;
 }
 
 .cell-bar.selected {
@@ -693,6 +797,15 @@ img {
     margin-top: 1px;
     color: #ffffffb5;
     mix-blend-mode: difference;
+}
+
+.cell-value.stats  {
+  top: 12px;
+  margin-top: -12px;
+  padding-top: 14px;
+  border-left: 1px solid;
+  /* margin-bottom: -1000px; */
+  padding-bottom: 1000px;
 }
 
 
@@ -750,6 +863,7 @@ text {
 
 input[type="checkbox" i] {
   width: 10px;
+  min-width: 10px;
   height: 10px;
   padding: 0px;
   margin: 0px;
@@ -881,31 +995,49 @@ input[type="checkbox" i]:hover {
   opacity: 0.2;
 }
 
-/* color selection */
+/* settings selection */
 
-.color-box {
+.hover-box {
   position: absolute;
   z-index: 1000;
-  height: 100px;
+  max-height: 100px;
   overflow-y: scroll;
   border: 1px solid #f1f1f1;
   background: white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.color-range-box {
+.hover-box-item {
   display: flex;
   flex-direction: row;
+  /* margin: 8px; */
+}
+
+.hover-box-item.color {
   width: 100px;
   border: 1px solid white;
 }
 
-.color-range-box:hover {
+.hover-box-item.color:hover {
   border: 1px solid grey;
+}
+
+.hover-box-input{
+  height: 6px;
+  width: 50px;
+  margin-right: 8px;
+  font-size: 9px;
 }
 
 .color-range-block {
   height: 10px;
+  width: 100%;
+}
+
+.hover-label {
+  color: grey;
+  font-size: 10px;
+  text-align: right;
   width: 100%;
 }
 

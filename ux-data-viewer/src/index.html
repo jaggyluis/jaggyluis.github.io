@@ -26,6 +26,10 @@
     <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.js'></script>
     <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.0.9/mapbox-gl-draw.css' type='text/css'/>
 
+    <!--  deck gl -->
+    <script src="https://unpkg.com/deck.gl@~6.2.0/deckgl.min.js"></script>
+    <!-- <script src="https://unpkg.com/deck.gl@~5.2.0/deckgl.min.js"></script>   -->
+
     <!--  html2canvas -->
     <script src='js/lib/html2canvas.min.js'></script>
     <script src="js/lib/csvDownload.js"></script>
@@ -59,11 +63,17 @@
     </div>
 
     <div id="banner">
+      <div id="tt">
+        <img src="img/loadloop.gif" id="loader"></img>
+      </div>
       <div id="wb"><img src="img/logo--woods-bagot.svg"/></div>
       <div id="ss"><img src="img/SUPERSPACE Logo.png"/></div>
     </div>
 
     <!-- App -->
+    <script type="text/javascript">
+      const {MapboxLayer} = deck;
+    </script>
     <script src="js/components/MapController.js"></script>
     <script src="js/components/SSController.js"></script>
     <script src="js/utils/drop.js"></script>

@@ -159,9 +159,9 @@ class SSController {
       Object.keys(this._mapController.sources).forEach(key => {
 
         var source = this._mapController.sources[key];
-        var filterId = source.layers.filter;
+        var propertyLayerId = source.layers.property;
 
-        if (!filterId) {
+        if (!propertyLayerId) {
           return;
         }
 
@@ -170,18 +170,24 @@ class SSController {
           if (flat) {
 
             console.log("make flat");
-            self._map.setPaintProperty(filterId, "fill-extrusion-height", 0);
-            self._map.setPaintProperty(filterId, "fill-extrusion-base", 0);
+            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-height", 0);
+            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-base", 0);
 
           } else {
 
             console.log("make extruded");
-            self._map.setPaintProperty(filterId, "fill-extrusion-height", ["get", source.height]);
-            self._map.setPaintProperty(filterId, "fill-extrusion-base", ["get", source.base]);
+            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-height", ["get", source.height]);
+            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-base", ["get", source.base]);
           }
 
         }
       });
+    }
+
+    fire(type) {
+      if (type == "toggle") {
+        this._toggleButton.click();
+      }
     }
 
     buildToggleButton() {
