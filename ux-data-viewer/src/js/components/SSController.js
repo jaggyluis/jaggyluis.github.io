@@ -215,12 +215,12 @@ class SSController {
           toggleImg.src = "img/cube-icon.png";
           toggleImg.classList.add("inactive");
           toggleButton.title = "3D View";;
-          toggleButton.pitch = map.getPitch();
+          toggleButton.pitch = self._map.getPitch();
 
-          map.setPitch(0);
-          map.setBearing(0);
-          map.touchZoomRotate.disableRotation();
-          map.dragRotate.disable();
+          self._map.setPitch(0);
+          self._map.setBearing(0);
+          self._map.touchZoomRotate.disableRotation();
+          self._map.dragRotate.disable();
 
         } else {
           toggleButton.selected = true;
@@ -228,10 +228,10 @@ class SSController {
           toggleImg.classList.remove("inactive");
           toggleButton.title = "Plan View";
 
-          map.setPitch(toggleButton.pitch);
+          self._map.setPitch(toggleButton.pitch);
 
-          map.touchZoomRotate.enableRotation();
-          map.dragRotate.enable();
+          self._map.touchZoomRotate.enableRotation();
+          self._map.dragRotate.enable();
         }
 
         self.pitchControl(!toggleButton.selected);

@@ -6,7 +6,7 @@
     "data" : false,
     "download" : false,
     "active" : "buildings",
-    "camera" : "camera3"
+    "camera" : "camera2"
   },
   "cameras" : [
     {
@@ -18,16 +18,16 @@
     },
     {
       "id" : "camera2",
-      "center": [151.19816090006066,-33.88510494417777],
-      "zoom": 14.302824376136305,
-      "bearing": 0,
-      "pitch": 0
+      "center":[151.19803400830983,-33.88964382398188],
+      "zoom": 14.462110925965172,
+      "bearing": -14.525449986024572,
+      "pitch": 52.49999999999999
     },
     {
       "id" : "camera3",
-      "center": [151.19669972384213,-33.886953314581575],
-      "zoom": 14.302824376136305,
-      "bearing": 0,
+      "center": [151.19380634106665,-33.89392474265617],
+      "zoom": 13.929816503422819,
+      "bearing": 0.3294129655434972,
       "pitch": 50
     }
   ],
@@ -59,7 +59,8 @@
             "MAJORUSE",
             "typology",
             "FloorRL",
-            "RoofRL"
+            "RoofRL",
+            "Total_Empl"
           ],
           "hidden" : [
             "FloorRL",
@@ -73,16 +74,41 @@
             "Percent_HigherEd",
             "Percent_ICT",
             "Percent_LifeScience",
-            "Percent_OtherOffice"
+            "Percent_OtherOffice",
+            "Total_Empl"
           ]
         },
         "style" : [
           {
             "property" : "Total_Area",
             "color" : "YlGnBu",
-            "reverse" : true,
             "domain" : [0, 1000],
             "brush" : [50, 100]
+          },
+          {
+            "property" : "Percent_FnB",
+            "color" : "PuBuGn"
+          },
+          {
+            "property" : "Percent_HigherEd",
+            "color" : "PuBuGn"
+          },
+          {
+            "property" : "Percent_ICT",
+            "color" : "PuBuGn"
+          },
+          {
+            "property" : "Percent_LifeScience",
+            "color" : "PuBuGn"
+          },
+          {
+            "property" : "Percent_OtherOffice",
+            "color" : "PuBuGn"
+          },
+          {
+            "property" : "Total_Empl",
+            "color" : "Viridis",
+            "reverse" : true
           }
         ]
       }
@@ -92,6 +118,7 @@
       "url" : "data/syd/dexus/site.geojson",
       "options" : {
         "visible" : true,
+        "interactive" : false,
         "clean" : false,
         "defaults" : {
           "string" : "invalid data",
@@ -112,6 +139,7 @@
       "url" : "data/syd/buildings.geojson",
       "options" : {
         "visible" : true,
+        "interactive" : false,
         "height" : "height",
         "boundary" : {
           "xor" : true,

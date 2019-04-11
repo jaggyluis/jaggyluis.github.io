@@ -77,7 +77,7 @@ var pc = function(selection, label) {
 
   return pc;
 };
-var events = d3.dispatch.apply(this,["render", "resize", "highlight", "brush", "brushend", "axesreorder", "rangeset", "overflow"].concat(d3.keys(__))),
+var events = d3.dispatch.apply(this,["render", "resize", "highlight", "brush", "brushend", "axesreorder", "axisupdated", "rangeset", "overflow"].concat(d3.keys(__))),
     w = function() { return __.width - __.margin.right - __.margin.left; },
     h = function() { return __.height - __.margin.top - __.margin.bottom; },
     flags = {
@@ -1307,13 +1307,13 @@ pc.updateAxes = function() {
   // Update
   g_data.attr("opacity", 0);
   g_data.select(".axis")
-    .transition()
-      .duration(__.duration)
+    //.transition()
+      //.duration(__.duration)
       .each(function(d) { d3.select(this).call( pc.applyAxisConfig(axis, __.dimensions[d]) )
       });
   g_data.select(".label")
-    .transition()
-      .duration(__.duration)
+    //.transition()
+      //.duration(__.duration)
       .text(dimensionLabels)
       .attr("transform", "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")");
 
@@ -1321,15 +1321,16 @@ pc.updateAxes = function() {
   g_data.exit().remove();
 
   g = pc.svg.selectAll(".dimension");
-  g.transition().duration(__.duration)
+  g
+    //.transition()
+    //.duration(__.duration)
     .attr("transform", function(p) { return "translate(" + position(p) + ")"; })
     .style("opacity", 1);
 
   pc.svg.selectAll(".axis")
-    .transition()
-      .duration(__.duration)
-      .each(function(d) { d3.select(this).call( pc.applyAxisConfig(axis, __.dimensions[d]) );
-      });
+    //.transition()
+      //.duration(__.duration)
+      .each(function(d) { d3.select(this).call( pc.applyAxisConfig(axis, __.dimensions[d]) ); });
 
   if (flags.brushable) pc.brushable();
   if (flags.reorderable) pc.reorderable();
@@ -1338,6 +1339,8 @@ pc.updateAxes = function() {
     pc.brushMode("None");
     pc.brushMode(mode);
   }
+
+  events.axisupdated.call(pc);
 
   return this;
 };

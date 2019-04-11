@@ -13,8 +13,8 @@ class MapController {
     this.cameras = {};
     this.container = map._container;
     this.envelope = [];
-    this.options = options || {
-      draw : true,
+    this.options = {
+      draw : options && options.draw === false ? false : true,
       camera : "default",
     };
 
@@ -106,16 +106,24 @@ class MapController {
       display(geojson);
     };
 
+    var modes = MapboxDraw.modes;
+
+    if (options && options.draw === false) { // override all draw functionality with static ---
+      Object.keys(modes).forEach(mode => {
+        modes[mode] = StaticMode;
+      })
+    }
+
     var draw = new MapboxDraw({
       displayControlsDefault: false,
       controls: {
-        polygon: true,
-        trash: true
+        polygon: options && options.draw === false ? false : true,
+        trash: options && options.draw === false ? false : true
       },
       styles : buildMapBoxDrawLayerStyle(),
       modes: Object.assign({
         static: StaticMode,
-      }, MapboxDraw.modes),
+      }, modes),
     });
 
     self.map.dragRotate.disable();
@@ -186,21 +194,6 @@ class MapController {
     }
   }
 
-  toggleDraw(draw) {
-
-    var self = this;
-
-    if (!draw) {
-      if (self.options.draw) {
-        self.options.draw = false;
-      }
-    } else {
-      if (!self.options.draw) {
-        self.options.draw = true;
-      }
-    }
-  }
-
   setLoading(loading) {
 
     this.loading = loading;
@@ -236,8 +229,6 @@ class MapController {
 
     // NOTE - ignore key and options for now ---
     // NOTE - need to write some type checks for this to make sure it only uses polygons - not sure what happens otherwise
-
-    console.log(data);
 
     var self = this;
 
@@ -550,7 +541,7 @@ class MapController {
       });
     });
 
-    var allLayers = map.getStyle().layers;
+    var allLayers = self.map.getStyle().layers;
 
     var firstPrevSourceLayerId = null;
     for (var i = 0; i < allLayers.length; i++) {
@@ -566,7 +557,7 @@ class MapController {
 
     for (var i = 0; i<sortedSourceLayers.length; i++) {
       var id = sortedSourceLayers[i];
-      map.moveLayer(id, firstPrevSourceLayerId);
+      self.map.moveLayer(id, firstPrevSourceLayerId);
     }
 
     prevSource.index += 1;
@@ -653,7 +644,7 @@ class MapController {
 
     Object.keys(source.layers).forEach(layerType => {
       source.layers[layerType].forEach(id => {
-        map.setLayoutProperty(id, 'visibility', visibility);
+        self.map.setLayoutProperty(id, 'visibility', visibility);
       });
 
     });
@@ -795,7 +786,7 @@ class MapController {
       return;
     }
 
-    var layers = map.getStyle().layers;
+    var layers = self.map.getStyle().layers;
     // Find the index of the first symbol layer in the map style
     var firstSymbolId;
     for (var i = 0; i < layers.length; i++) {
@@ -874,7 +865,7 @@ class MapController {
       return;
     }
 
-    var layers = map.getStyle().layers;
+    var layers = self.map.getStyle().layers;
     // Find the index of the first symbol layer in the map style
     var firstSymbolId;
     for (var i = 0; i < layers.length; i++) {
@@ -942,6 +933,10 @@ class MapController {
     }
 
     // --- highlight
+
+    if (self.sources[key].options.interactive === false) {
+      return;
+    }
 
     self.sources[key].layers.property.forEach(id => {
 
@@ -1038,7 +1033,7 @@ class MapController {
     }
 
     if (source.hovered) {
-      map.setFeatureState({source : key, id : source.hovered._id}, {hover : false });
+      self.map.setFeatureState({source : key, id : source.hovered._id}, {hover : false });
 
       if (source.grid) {
         source.grid.unhighlight(source.hovered);
@@ -1113,7 +1108,7 @@ class MapController {
 
       var bounds = geojsonExtent(turf.featureCollection(features));
 
-      map.fitBounds(bounds, {
+      self.map.fitBounds(bounds, {
         padding: 20,
         maxZoom : 15,
       });
@@ -1260,7 +1255,7 @@ class MapController {
       });
 
       var popup = new mapboxgl.Popup({
-        closeButton: true,
+        closeButton: source.options.interactive === false ? false : true,
         closeOnClick: false
       });
 
@@ -1564,10 +1559,10 @@ class MapController {
           self.updateLegend();
         })
         .on("rangeset", function(d, a) {
-          console.log("range set", a, d);
+          // console.log("range set", a, d);
         })
         .on("overflow", function(d, a) {
-          console.log("overflow", a, d);
+          // console.log("overflow", a, d);
 
           self.remapProperty(key, a, d);
         })
@@ -1833,8 +1828,10 @@ class MapController {
     var active = source.active;
 
     if (!visible && active === property) {
-      active = null;
+      source.active = active = null;
     }
+
+    //source.active = null;
 
     source.height = self.sources[key].options.height || "" ;
     source.base = self.sources[key].options.base || "" ;
@@ -2342,7 +2339,6 @@ class MapController {
         });
 
         colorRangeBox.addEventListener("click", e => {
-          console.log(state);
 
           state.propertyStyle = colorRange;
 
@@ -2807,7 +2803,7 @@ class MapController {
     }
 
     paintProperties.forEach(paintProperty => {
-      map.setPaintProperty(paintProperty.id, paintProperty.type, paintProperty.paint);
+      self.map.setPaintProperty(paintProperty.id, paintProperty.type, paintProperty.paint);
     });
 
   }
