@@ -165,7 +165,7 @@ export default class MapController {
 
       console.log(e);
 
-      if (e.type === "draw.update") {
+      if (e.type === "draw.update" && e.features && e.features.length) {
         var centroids = e.features.filter(f => f.geometry.type === "Point" && f.properties.meta === "centroid");
 
         console.log(centroids);
@@ -498,7 +498,7 @@ export default class MapController {
     }
 
     self.draw.set(data);
-    self.map.fire('draw.update');
+    self.map.fire('draw.update', { features: data });
   }
 
   getSourceData(key) {
