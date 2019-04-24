@@ -1,7 +1,11 @@
+import MapStyleBuilder from "/js/components/MapStyleBuilder.js";
+import SSController from "/js/components/SSController.js";
 
+import RadiusMode from "/js/components/RadiusMode.js";
 
+const { MapboxLayer } = deck;
 
-class MapController {
+export default class MapController {
 
   constructor(map, options) {
     this.map = map;
@@ -13,10 +17,20 @@ class MapController {
     this.cameras = {};
     this.container = map._container;
     this.envelope = [];
+    this.styleBuilder = new MapStyleBuilder();
     this.options = {
       draw : options && options.draw === false ? false : true,
       camera : "default",
     };
+
+    // older browsers
+    if (!('remove' in Element.prototype)) {
+      Element.prototype.remove = function() {
+        if (this.parentNode) {
+          this.parentNode.removeChild(this);
+        }
+      };
+    }
 
     var self = this;
 
@@ -31,6 +45,12 @@ class MapController {
         self.keys.splice(self.keys.indexOf(e.key, 1));
       }
     });
+
+    document.addEventListener("keyup", function(e) {
+      if (e.key === "Tab") {
+        self.nextCamera();
+      }
+    })
 
     console.log(map);
 
@@ -66,13 +86,13 @@ class MapController {
 
     });
 
-    document.addEventListener('contextmenu', event => { // NOTE - this will disable all context menu on the page during loading - might be a bad idea
-
-      if (self.loading) {
-        event.preventDefault();
-      }
-
-    });
+    // document.addEventListener('contextmenu', event => { // NOTE - this will disable all context menu on the page during loading - might be a bad idea
+    //
+    //   if (self.loading) {
+    //     event.preventDefault();
+    //   }
+    //
+    // });
 
     var StaticMode = {};
 
@@ -116,35 +136,51 @@ class MapController {
 
     var draw = new MapboxDraw({
       displayControlsDefault: false,
+      defaultMode: 'static',
       controls: {
         polygon: options && options.draw === false ? false : true,
         trash: options && options.draw === false ? false : true
       },
-      styles : buildMapBoxDrawLayerStyle(),
+      styles : self.styleBuilder.buildMapBoxDrawLayerStyle(),
       modes: Object.assign({
         static: StaticMode,
+        radius: RadiusMode,
       }, modes),
     });
 
     self.map.dragRotate.disable();
     self.draw = draw;
 
-    //map.addControl(new mapboxgl.NavigationControl());
+    //map.addControl(new mapboxgl.NavigationControl({  showZoom: false, }));
     //map.addControl(new mapboxgl.ScaleControl());
 
-    var controls = new SSController();
+    var controls = new SSController(options);
     controls.setMapController(self);
     self.controls = controls;
 
     map.addControl(controls);
     map.addControl(draw);
 
-    function update(e) {
+    function updateDraw(e) {
 
-      self.envelope = self.draw.getAll().features;
+      console.log(e);
+
+      if (e.type === "draw.update") {
+        var centroids = e.features.filter(f => f.geometry.type === "Point" && f.properties.meta === "centroid");
+
+        console.log(centroids);
+
+        if (centroids.length) {
+          self.draw.changeMode("radius", {centroidId : centroids[0].id});
+          return;
+        }
+      }
+
+
+      self.envelope = self.draw.getAll().features.filter(f => f.geometry.type === "Polygon");
       self.envelope.forEach(f => {
         if (!f.properties._kd) {
-          f.properties_kd = "draw";
+          f.properties._kd = "draw";
         }
       })
 
@@ -170,28 +206,244 @@ class MapController {
 
     };
 
-    map.on('draw.create', update);
-    map.on('draw.delete', update);
-    map.on('draw.update', update);
+    map.on('draw.create', updateDraw);
+    map.on('draw.delete', updateDraw);
+    map.on('draw.update', updateDraw);
+    map.on('draw.modechange', (e) => {
+      //console.log(e);
+    });
+    map.on('draw.selectionchange', (e) => {
+
+      var features = e.features;
+
+      e.features.forEach(f => {
+        if (f.properties.meta == "radius") {
+          self.draw.changeMode("radius", {featureId : f.id});
+        }
+      })
+
+    })
+
+    if (options.draw !== false) {
+
+      var drawControl = document.getElementsByClassName("mapbox-gl-draw_ctrl-draw-btn")[0].parentNode;
+
+      var selectImg = document.createElement("img");
+      selectImg.src = "img/mouse-icon.png";
+      selectImg.classList.add("mapbox-custom-ctrl");
+      selectImg.classList.add("inactive");
+
+      var selectControl = document.createElement("button");
+      selectControl.classList.add("mapboxgl-ctrl-icon");
+
+      selectControl.type = "button";
+      selectControl.title = "Select tool (s)";
+      selectControl.appendChild(selectImg);
+      selectControl.addEventListener("click", e => {
+        if (self.draw.getMode() !== "static") {
+          self.draw.changeMode("static");
+          if (!selectImg.classList.contains("inactive")) {
+            selectImg.classList.add("inactive");
+          }
+        } else {
+          self.draw.changeMode('simple_select');
+          selectImg.classList.remove("inactive");
+        }
+      });
+
+      var radiusImg = document.createElement("img");
+      radiusImg.src = "img/mapbox/circle-icon.svg";
+      radiusImg.classList.add("mapbox-custom-ctrl");
+
+      var radiusControl = document.createElement("button");
+      radiusControl.classList.add("mapboxgl-ctrl-icon");
+      radiusControl.type = "button";
+      radiusControl.title = "Radius tool (r)";
+      radiusControl.appendChild(radiusImg);
+      radiusControl.addEventListener("click", e => {
+        self.draw.changeMode('radius');
+      });
+
+      drawControl.insertBefore(selectControl, drawControl.childNodes[0]);
+      drawControl.insertBefore(radiusControl, drawControl.childNodes[1]);
+
+      self.map.addLayer({
+        "id": "symbols-hot",
+        "type": "symbol",
+        "source": "mapbox-gl-draw-hot",
+        "layout": {
+            "symbol-placement": "line",
+            //"text-font": ["Open Sans Regular"],
+            "text-field": ["get", "datum"],
+            "text-allow-overlap" : true,
+            "text-ignore-placement" : true,
+            "text-justify": "center",
+            "text-max-width" : 1000,
+            //"text-size": 32,
+            "text-offset": [0, 0.3],
+            "text-anchor": "top"
+        },
+        "paint": {}
+      });
+    }
+
+    console.log(self.map.style.sourceCaches);
   }
 
   addCamera(key, camera) {
-    this.cameras[key] = camera;
+    if (!(key in this.cameras)) {
+      this.cameras[key] = camera;
+      console.log("added camera : " + key );
+    }
+
+    this.controls.fire("camera");
   }
 
-  toggleCamera(key) {
+  deleteCamera(key) {
+    if (key in this.cameras) {
+      delete this.cameras[key];
+      console.log("deleted camera : " + key);
+    }
+
+    if (key === this.options.camera) {
+      //this.options.camera = "default";
+      this.nextCamera();
+    }
+
+    this.controls.fire("camera");
+  }
+
+  saveCamera(key) {
+
+    function generateUID() { // https://stackoverflow.com/questions/6248666/how-to-generate-short-uid-like-ax4j9z-in-js
+        // I generate the UID from two parts here
+        // to ensure the random number provide enough bits.
+        var firstPart = (Math.random() * 46656) | 0;
+        var secondPart = (Math.random() * 46656) | 0;
+        firstPart = ("000" + firstPart.toString(36)).slice(-3);
+        secondPart = ("000" + secondPart.toString(36)).slice(-3);
+        return firstPart + secondPart;
+    }
+
+    var center = [this.map.getCenter().lng, this.map.getCenter().lat];
+    var zoom = this.map.getZoom();
+    var bearing = this.map.getBearing();
+    var pitch = this.map.getPitch();
+
+    var camera = {
+      center : center,
+      zoom : zoom,
+      bearing : bearing,
+      pitch : pitch,
+      plan : !this.controls.isExtruded()
+    }
+
+    if (key == "default" || key == undefined || key == null) {
+      key = "camera_" + generateUID();
+    }
+
+    if (key in this.cameras) {
+      this.cameras[key] = camera;
+      console.log("updated camera : " + key );
+    } else {
+      this.addCamera(key, camera);
+    }
+
+    this.options.camera = key;
+
+    this.controls.fire("camera");
+
+    return camera;
+  }
+
+  // nextCamera() {
+  //
+  //   var self = this;
+  //
+  //   var cameras = Object.keys(self.cameras);
+  //   var camera = self.options.camera;
+  //   var currIndex = cameras.indexOf(camera);
+  //   var nexIndex = currIndex + 1;
+  //
+  //   if (nexIndex >= cameras.length) {
+  //     nexIndex = 0;
+  //   }
+  //
+  //   if (self.cameras[cameras[nexIndex]]) {
+  //     self.toggleCamera(cameras[nexIndex], true);
+  //   }
+  //
+  //   this.controls.fire("camera");
+  // }
+
+  nextCamera() {
+
+    var self = this;
+
+    var cameras = Object.keys(self.cameras);
+    var camera = self.options.camera;
+    var currIndex = cameras.indexOf(camera);
+    var nexIndex = currIndex + 1;
+
+    if (nexIndex >= cameras.length) {
+
+      self.options.camera = "default";
+
+    } else {
+
+      if (self.cameras[cameras[nexIndex]]) {
+        self.toggleCamera(cameras[nexIndex], true);
+      }
+    }
+
+    this.controls.fire("camera");
+  }
+
+  getCameras() {
+    return Object.keys(this.cameras);
+  }
+
+  getCamera() {
+    return this.options.camera;
+  }
+
+  toggleCamera(key, animate) {
 
     var self = this;
 
     if (key in self.cameras) {
       self.options.camera = key;
 
-      if (!self.controls.isExtruded()) {
-        self.controls.fire("toggle");
+      if (self.cameras[key].plan === true) {
+
+        if (self.controls.isExtruded()) {
+          self.controls.fire("toggle");
+        }
+
+      } else if (self.cameras[key].plan === false) {
+
+        if (!self.controls.isExtruded()) {
+          self.controls.fire("toggle");
+        }
+
+      } else {
+
+        if (!self.controls.isExtruded()) {
+          self.controls.fire("toggle");
+        }
       }
 
-      self.map.flyTo(self.cameras[key]);
+      self.map.flyTo(Object.assign( { animate: animate || false, }, self.cameras[key] ));
+      console.log("set camera : " +  key);
+
+    } else if (key === "default") {
+      self.options.camera = key;
+
+    } else {
+      console.log("camera not found : " + key);
     }
+
+    this.controls.fire("camera");
   }
 
   setLoading(loading) {
@@ -262,6 +514,9 @@ class MapController {
   }
 
   addSource(key, data, options) {
+
+    var t0= performance.now();
+    console.log("call add source");
 
     function createPropertyStyle(property, propertyOptions) {
 
@@ -400,6 +655,8 @@ class MapController {
 
     };
 
+    console.log("globalState built " + (performance.now() - t0) + " milliseconds.");
+
     self.sources[key].values.forEach(d => { // NOTE - adds all the geometry at the beginning ---
 
       var keep = true;
@@ -418,8 +675,12 @@ class MapController {
       //self.sources[key].filtered.push(d._id);
     });
 
+    console.log("filters built " + (performance.now() - t0) + " milliseconds.");
+
     var properties = Object.keys(self.sources[key].properties);
     var propertyTypes = detectTypes(self.sources[key].values);
+
+    console.log("types detected " + (performance.now() - t0) + " milliseconds.");
 
     properties.sort();
     properties.forEach(property => {
@@ -476,6 +737,8 @@ class MapController {
 
     });
 
+    console.log("propertyStates built " + (performance.now() - t0) + " milliseconds.");
+
     if (Object.keys(self.sources).length === 1 && self.options.camera === "default") { // NOTE - only center once , or ignore if camera is set ---
 
       var base = turf.buffer(this.sources[key].data.features[0], 10, {units: 'miles'});
@@ -500,6 +763,9 @@ class MapController {
         self.selectFeature(key, f.properties, { type : "map" });
       });
     }
+
+    var t1 = performance.now();
+    console.log("call to add source took " + (t1 - t0) + " milliseconds.");
   }
 
   moveSourceUp(key) {
@@ -815,7 +1081,7 @@ class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        var layer = buildGeoJsonPolygonInteractionLayer(source);
+        var layer = self.styleBuilder.buildGeoJsonPolygonInteractionLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.interaction.push(id);
@@ -827,7 +1093,7 @@ class MapController {
       case "LineString":
       case "MultiLineString":
 
-        var layer = buildGeoJsonLineStringInteractionLayer(source);
+        var layer = self.styleBuilder.buildGeoJsonLineStringInteractionLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.interaction.push(id);
@@ -839,7 +1105,7 @@ class MapController {
       case "Point":
       case "MultiPoint":
 
-        var layer = buildGeoJsonPointInteractionLayer(source);
+        var layer = self.styleBuilder.buildGeoJsonPointInteractionLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.interaction.push(id);
@@ -894,7 +1160,7 @@ class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        var layer =  buildGeoJsonPolygonPropertyLayer(source, !self.controls.isExtruded());
+        var layer =  self.styleBuilder.buildGeoJsonPolygonPropertyLayer(source, !self.controls.isExtruded());
         var id = layer.id;
 
         self.sources[key].layers.property.push(id);
@@ -906,7 +1172,7 @@ class MapController {
       case "LineString":
       case "MultiLineString":
 
-        var layer =  buildGeoJsonLineStringPropertyLayer(source);
+        var layer =  self.styleBuilder.buildGeoJsonLineStringPropertyLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.property.push(id);
@@ -918,7 +1184,7 @@ class MapController {
       case "Point":
       case "MultiPoint":
 
-        var layer = buildGeoJsonPointPropertyLayer(source);
+        var layer = self.styleBuilder.buildGeoJsonPointPropertyLayer(source);
         var id = layer.id;
 
         self.sources[key].layers.property.push(id);
@@ -942,13 +1208,11 @@ class MapController {
 
       self.map.on("mousemove", id, function(e) {
 
-        if (self.draw.getMode() !== "simple_select") { // NOTE - user is drawing ---
+        if (self.draw.getMode() !== "static") { // NOTE - user is drawing or selecting ---
           return;
         }
 
         if (e.features.length > 0) {
-
-          self.draw.changeMode('static'); // NOTE - change to user feature selection ---
 
           self.map.getCanvas().style.cursor = 'pointer';
 
@@ -959,12 +1223,11 @@ class MapController {
 
       self.map.on("mouseleave", id, function() {
 
-        if (self.draw.getMode() === "static") { // NOTE - change back to simple_select
-
-          self.draw.changeMode('simple_select');
-
-          self.map.getCanvas().style.cursor = '';
+        if (self.draw.getMode() !== "static") { // NOTE - user is drawing or selecting ---
+          return;
         }
+
+        self.map.getCanvas().style.cursor = '';
 
         self.unhighlightFeature(key);
       });
@@ -973,13 +1236,11 @@ class MapController {
 
       self.map.on('click', id, function(e) {
 
-        if (self.draw.getMode() !== "static") { // NOTE - user is selecting from a hovered feature ---
+        if (self.draw.getMode() !== "static") { // NOTE - user is drawing or selecting ---
           return;
         }
 
         if (e.features.length > 0) {
-
-          //self.draw.changeMode('static');
 
           self.selectFeature(key, e.features[0].properties, { type : "map", location : e.lngLat });
         }
@@ -1543,7 +1804,7 @@ class MapController {
         .hideAxis(source.hidden)
         .color(function(d) { return "#000000"; })
         .alpha(0.05)
-        //.composite("darken")
+        .composite("darken")
         .margin({ top: 30, left: 30, bottom: 60, right: 15})
         .mode("queue")
         .brushMode("1D-axes")
@@ -2555,6 +2816,7 @@ class MapController {
       // new clusters ---
 
       var bins = self.getBins(key);
+      var propertyLayerId = source.layers.property[0];
 
       bins.forEach((bin, i) => {
 
@@ -2615,7 +2877,7 @@ class MapController {
 
           source.layers.clusters.push(cluster.id);
 
-          self.map.addLayer(cluster);
+          self.map.addLayer(cluster, propertyLayerId);
       });
 
     }
@@ -2978,36 +3240,34 @@ class MapController {
 
       });
 
-     // if (data.length !== source.values.length) { // NOTE - turn on for init with filter ---
 
-        data.forEach(d => {
+      data.forEach(d => {
 
-          var index = 0;
+        var index = 0;
 
-          for (var i = 0; i < bins.length ; i++) {
+        for (var i = 0; i < bins.length ; i++) {
 
-            if (bins[i].value > d[property]) {
-              break;
-            }
-
-            index = i;
+          if (bins[i].value > d[property]) {
+            break;
           }
 
-          bins[index].count+=1;
-          bins[index].perc = bins[index].count / data.length;
-          bins[index].data.push(d);
+          index = i;
+        }
 
-          if (bins[index].min == null || bins[index].min > d[property]) {
-            bins[index].min = d[property];
-          }
+        bins[index].count+=1;
+        bins[index].perc = bins[index].count / data.length;
+        bins[index].data.push(d);
 
-          if (bins[index].max == null || bins[index].max < d[property]) {
-            bins[index].max = d[property];
-          }
+        if (bins[index].min == null || bins[index].min > d[property]) {
+          bins[index].min = d[property];
+        }
 
-        });
+        if (bins[index].max == null || bins[index].max < d[property]) {
+          bins[index].max = d[property];
+        }
 
-      //}
+      });
+
 
     } else if (state.propertyType === "string") {
 
@@ -3038,28 +3298,26 @@ class MapController {
 
       });
 
-      // if (data.length !== source.values.length) { // NOTE - turn on for init with filter ---
+      data.forEach(d => {
 
-        data.forEach(d => {
+        var index = 0;
 
-          var index = 0;
+        for (var i = 0; i < bins.length ; i++) {
 
-          for (var i = 0; i < bins.length ; i++) {
+          index = i;
 
-            index = i;
-
-            if (bins[i].value === d[property]) {
-              break;
-            }
-
+          if (bins[i].value === d[property]) {
+            break;
           }
 
-          bins[index].count+=1;
-          bins[index].perc = bins[index].count / data.length;
-          bins[index].data.push(d);
+        }
 
-        });
-      //}
+        bins[index].count+=1;
+        bins[index].perc = bins[index].count / data.length;
+        bins[index].data.push(d);
+
+      });
+
 
     } else {
 
@@ -3074,128 +3332,146 @@ class MapController {
     this.legend = element;
   }
 
-  updateLegend() {
+  buildLegend(key, target) {
 
     var self = this;
-    var legend = self.legend;
+    var source = self.sources[key];
+    var content = target;
 
-    if (legend === undefined || legend === null) {
-      return; // NOTE - legend has not been set ---
+    if (source === undefined || source === null) {
+      return ;
     }
 
-    legend.innerHTML = "";
+    var state = source.states[source.active];
+    var bins = self.getBins(key)
 
-    var count = 0;
+    var contentLabel = document.createElement("div");
+    contentLabel.classList.add("legend-header");
+    contentLabel.classList.add("legend-header-label");
+    //contentLabel.classList.add("selected");
 
-    Object.keys(self.sources).forEach(s => {
+    var lkey = document.createElement("div");
+    lkey.classList.add("legend-header-key");
+    lkey.innerHTML = source.source;
 
-        var source = self.sources[s];
+    var lprop = document.createElement("div");
+    lprop.classList.add("legend-header-property");
+    lprop.innerHTML = source.active;
 
-      //  console.log(source);
+    var di = document.createElement("img");
+    di.classList.add("box-menu-img");
+    di.src = "img/camera-icon.png";
+    di.style.height = "18px";
+    di.style.width = "18px";
 
-        if (source.active && source.visible) {
+    var dl = document.createElement("div");
+    dl.classList.add("box-menu-item");
+    dl.title = "Snapshot Readout";
+    dl.appendChild(di);
+    dl.addEventListener("click", e => {
+      console.log("snapshot");
 
-          var legend = self.legend;
+      setInlineStyles(target);
 
-          var div = document.createElement("div");
-          div.classList.add("legend-div");
+      html2canvas(target).then(canvas => {
+        canvas.toBlob(function (blob) {
+          saveAs(blob, 'chart.png');
+          console.log('saved as chart.png');
 
-          var header = document.createElement("div");
-          header.classList.add("legend-header");
+          target.style = "";
+          target.innerHTML = "";
+          self.buildLegend(source.source, target);
 
-          var content = document.createElement("div");
-          content.classList.add("legend-content");
+        });
+      });
+    });
 
-          var hkey = document.createElement("div");
-          hkey.classList.add("legend-header-key");
-          hkey.innerHTML = s;
+    var ei = document.createElement("img");
+    ei.classList.add("box-menu-img");
+    ei.src = "img/expand-icon.png";
 
-          hkey.addEventListener("click", e => {
-            content.classList.toggle("collapsed");
-          })
+    var eb = document.createElement("div");
+    eb.classList.add("box-menu-item");
+    eb.title = "Expand Readout";
+    eb.appendChild(ei);
 
-          var hprop = document.createElement("div");
-          hprop.classList.add("legend-header-property");
-          hprop.innerHTML = source.active;;
+    var contentReadouts = document.createElement("div");
+    contentReadouts.classList.add("legend-content-readouts")
 
-          header.appendChild(hkey);
-          header.appendChild(hprop);
+    var contentBars = document.createElement("div");
+    contentBars.classList.add("legend-content-bars");
 
-          div.appendChild(header);
-          div.appendChild(content);
+    var contentHist = document.createElement("div");
+    contentHist.classList.add("legend-content-hist");
 
-          legend.appendChild(div);
+    content.appendChild(contentLabel);
+    content.appendChild(contentReadouts);
 
-          var state = source.states[source.active];
-          var bins = self.getBins(s)
+    contentLabel.appendChild(lkey);
+    contentLabel.appendChild(lprop);
+    contentLabel.appendChild(dl);
+    contentLabel.appendChild(eb);
 
-          var contentBars = document.createElement("div");
-          contentBars.classList.add("legend-content-bars");
+    contentReadouts.appendChild(contentHist);
+    contentReadouts.appendChild(contentBars);
 
-          var contentHist = document.createElement("div");
-          contentHist.classList.add("legend-content-hist");
+    for (var i = 0; i< state.propertyStops.length; i++) {
 
-          content.appendChild(contentHist);
-          content.appendChild(contentBars);
+      if (bins[i].valid === false) {
+        continue;
+      }
 
-          for (var i = 0; i< state.propertyStops.length; i++) {
+      var item = document.createElement("div");
+      item.classList.add("legend-item");
 
-            if (bins[i].valid === false) {
-              continue;
-            }
+      var bar = document.createElement("div");
+      bar.classList.add("legend-color");
+      bar.style.background = state.propertyStops[i][1];
+      bar.style.width = (bins[i].perc * 100) + "px";
 
-            var item = document.createElement("div");
-            item.classList.add("legend-item");
+      var color = document.createElement("div");
+      color.classList.add("legend-color");
+      color.style.background = state.propertyStops[i][1];
 
-            var bar = document.createElement("div");
-            bar.classList.add("legend-color");
-            bar.style.background = state.propertyStops[i][1];
-            bar.style.width = (bins[i].perc * 100) + "px";
+      var value = document.createElement("div");
+      value.classList.add("legend-value");
 
-            var color = document.createElement("div");
-            color.classList.add("legend-color");
-            color.style.background = state.propertyStops[i][1];
+      if (state.propertyType === "number") {
 
-            var value = document.createElement("div");
-            value.classList.add("legend-value");
+        var start = parseFloat(Math.round(state.propertyStops[i][0] * 100) / 100).toFixed(2);
+        var end  = i == state.propertyStops.length - 1 ? null : parseFloat(Math.round(state.propertyStops[i + 1][0] * 100) / 100).toFixed(2);
 
-            if (state.propertyType === "number") {
-
-              var start = parseFloat(Math.round(state.propertyStops[i][0] * 100) / 100).toFixed(2);
-              var end  = i == state.propertyStops.length - 1 ? null : parseFloat(Math.round(state.propertyStops[i + 1][0] * 100) / 100).toFixed(2);
-
-              if (end !== null) {
-                value.innerHTML = start + " to " + end;
-              } else {
-                value.innerHTML = " > " + start;
-              }
-
-            } else if (state.propertyType === "string") {
-
-              value.innerHTML = state.propertyStops[i][0].toString();
-
-            } else {
-
-              value.innerHTML = state.propertyStops[i][0];
-            }
-
-            contentBars.appendChild(item);
-
-            item.appendChild(color);
-            //item.appendChild(bar);
-            item.appendChild(value);
-          }
-
-          ////// bar chart ---
-
-          buildBarChart(source, state, bins, contentHist);
-
-          ////// box plot ---
-
-          buildBoxPlot(source, state, bins, contentHist);
+        if (end !== null) {
+          value.innerHTML = start + " to " + end;
+        } else {
+          value.innerHTML = " > " + start;
         }
 
-    });
+      } else if (state.propertyType === "string") {
+
+        value.innerHTML = state.propertyStops[i][0].toString();
+
+      } else {
+
+        value.innerHTML = state.propertyStops[i][0];
+      }
+
+      contentBars.appendChild(item);
+
+      item.appendChild(color);
+      //item.appendChild(bar);
+      item.appendChild(value);
+    }
+
+    ////// bar chart ---
+
+    buildBarChart(source, state, bins, contentHist);
+
+    ////// box plot ---
+
+    buildBoxPlot(source, state, bins, contentHist);
+
+    ////// methods ---
 
     function buildBoxPlot(source, state, bins, target) {
 
@@ -3324,7 +3600,147 @@ class MapController {
           .attr("height", function(d) { return height - y(d.count); });
 
     }
+  }
 
+  updateLegend() {
+
+    var self = this;
+    var legend = self.legend;
+
+    if (legend === undefined || legend === null) {
+      return; // NOTE - legend has not been set ---
+    }
+
+    legend.innerHTML = "";
+
+    var readouts = document.createElement("div");
+    readouts.classList.add("legend-readouts");
+    var headers = document.createElement("div");
+    headers.classList.add("legend-headers");
+
+    legend.appendChild(readouts);
+    legend.appendChild(headers);
+
+    var count = 0;
+
+    Object.keys(self.sources).forEach(s => {
+
+        var source = self.sources[s];
+
+        if (source.active && source.visible) {
+
+          var legend = self.legend;
+
+          var readout = document.createElement("div");
+          readout.classList.add("legend-div");
+
+          var header = document.createElement("div");
+          header.classList.add("legend-header");
+          header.classList.add("selected");
+
+          var content = document.createElement("div");
+          content.classList.add("legend-content");
+
+          var indicator = document.createElement("div");
+          indicator.classList.add("legend-indicator");
+          indicator.classList.add("mapboxgl-popup-tip");
+
+          var hkey = document.createElement("div");
+          hkey.classList.add("legend-header-key");
+          hkey.innerHTML = s;
+          hkey.title = "Hide Legend"
+
+          var hsel = document.createElement("div");
+
+          var hprop = document.createElement("div");
+          hprop.classList.add("legend-header-property");
+          hprop.classList.add("legend-header-option")
+          hprop.title = "Active Property"
+          hprop.innerHTML = source.active;
+          hsel.appendChild(hprop);
+
+          // var hprop = document.createElement("select");
+          // hprop.classList.add("legend-header-option");
+          // hprop.innerHTML = source.active;
+
+          var hdrop = document.createElement("div");
+          hdrop.classList.add("legend-header-dropdown");
+          hdrop.classList.add("collapsed");
+          hsel.appendChild(hdrop);
+
+          var props = self.getProperties(source.source, true, false);
+          props.forEach(p => {
+
+            if (p === source.active) {
+              return;
+            }
+
+            var hopt = document.createElement("div");
+            hopt.classList.add("legend-header-property");
+            hopt.classList.add("legend-header-option")
+            hopt.innerHTML = p;
+            hopt.value = p;
+
+            hopt.addEventListener("click", () => {
+              self.selectProperty(source.source, p);
+            })
+
+            hdrop.appendChild(hopt);
+          });
+
+          hprop.addEventListener("click", () => {
+            //hdrop.classList.toggle("collapsed");
+          })
+
+          hsel.addEventListener("mouseenter", () => {
+            hsel.enter = true;
+            hdrop.classList.remove("collapsed");
+          });
+
+          hsel.addEventListener("mouseleave", () => {
+            hsel.enter = false;
+
+            setTimeout(() => {
+              if (!hsel.enter) {
+                if (!hdrop.classList.contains("collapsed")) {
+                  hdrop.classList.add("collapsed");
+                }
+              }
+
+            }, 100);
+
+          });
+
+          hkey.addEventListener("click", e => {
+            readout.classList.toggle("collapsed");
+            indicator.classList.toggle("collapsed");
+            header.classList.toggle("selected");
+
+            if (!readout.classList.contains("collapsed")) {
+              readout.scrollIntoView();
+              hkey.title = "Hide Legend"
+            } else {
+              hkey.title = "Show Legend"
+            }
+          })
+
+          header.appendChild(indicator);
+          header.appendChild(hkey);
+          header.appendChild(hsel);
+
+          readout.appendChild(content);
+
+          readouts.appendChild(readout);
+          headers.appendChild(header);
+
+          self.buildLegend(s, content);
+
+          //hkey.click();
+        }
+
+
+
+    });
   }
 }
 
@@ -3358,413 +3774,6 @@ function detectTypes(data) {
   return types;
 };
 
-// initial layer states ---
-
-
-function buildGeoJsonPolygonInteractionLayer(source) {
-  return {
-
-   id : source.source + '-interaction',
-   source : source.source,
-   type: 'line',
-   minzoom: 0,
-   filter : source.filtered,
-   paint: {
-     'line-opacity': [
-         "interpolate", ["linear"], ["zoom"],
-         7,  [
-             "case",
-             ["boolean", ["feature-state", "hover"], false],
-             1,
-             ["boolean", ["feature-state", "selected"], false],
-             1,
-             0
-             ],
-         20, 1
-         ],
-     'line-color' : [
-                 "case",
-                 ["boolean", ["feature-state", "hover"], false],
-                 "#000000",
-                 ["boolean", ["feature-state", "selected"], false],
-                 "#000000",
-                 "#ffffff"
-                ],
-    'line-width' :  [
-        "interpolate", ["linear"], ["zoom"],
-        7, 0,
-        20,  [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            3,
-            ["boolean", ["feature-state", "selected"], false],
-            3,
-            1
-            ]
-        ]
-   }
-
- };
-};
-
-function buildGeoJsonPolygonPropertyLayer(source, flat) {
-  return {
-
-   id : source.source + '-property',
-   source : source.source,
-   type: 'fill-extrusion',
-   minzoom: 0,
-   filter : source.filtered,
-   paint: {
-     'fill-extrusion-color':  [
-               "case",
-               ["boolean", ["feature-state", "hover"], false],
-               "#000000",
-               ["boolean", ["feature-state", "selected"], false],
-               "#000000",
-               "#e5e5e5"
-               ],
-     'fill-extrusion-height': flat ? 0 : ["get", source.height],
-     'fill-extrusion-base': flat ? 0 : ["get", source.base],
-     'fill-extrusion-opacity': 0.8,
-     'fill-extrusion-vertical-gradient' : true
-   }
-
- };
-};
-
-function buildGeoJsonLineStringInteractionLayer(source) {
-  return  {
-
-      id : source.source + '-interaction',
-      source : source.source,
-      type: 'line',
-      minzoom: 0,
-      filter : source.filtered,
-      paint: {
-        'line-blur': 0.5,
-        'line-opacity': [
-                    "case",
-                    ["boolean", ["feature-state", "hover"], false],
-                    1,
-                    ["boolean", ["feature-state", "selected"], false],
-                    1,
-                    0],
-        'line-color' : "#000000",
-        'line-width' : [
-                     "case",
-                     ["boolean", ["feature-state", "hover"], false],
-                     10,
-                     ["boolean", ["feature-state", "selected"], false],
-                     10,
-                     0.5
-                     ]
-      }
-
-  };
-}
-
-function buildGeoJsonLineStringPropertyLayer(source) {
-  return {
-
-   id : source.source + '-property',
-   source : source.source,
-   type: 'line',
-   minzoom: 0,
-   filter : source.filtered,
-   paint: {
-       'line-color' : "#e5e5e5",
-       'line-width': [
-           "interpolate", ["linear"], ["zoom"],
-           10, 0.5,
-           13, 2,
-           20, 10,
-       ],
-       'line-blur': [
-           "interpolate", ["linear"], ["zoom"],
-           10, 0,
-           20, 2
-       ]
-   }
-
- };
-}
-
-
-function buildGeoJsonPointInteractionLayer(source) {
-  return {
-
-    id : source.source + '-interaction',
-    source : source.source,
-    type : "circle",
-    minzoom : 0,
-    filter : source.filtered,
-    paint : {
-        "circle-radius": 5,
-        "circle-color": "#000000",
-        "circle-stroke-width": 0,
-        "circle-opacity":[
-                  "case",
-                  ["boolean", ["feature-state", "hover"], false],
-                  1,
-                  ["boolean", ["feature-state", "selected"], false],
-                  1,
-                  0
-                  ],
-    }
-
-  };
-}
-
-function buildGeoJsonPointPropertyLayer(source) {
-  return {
-
-    id : source.source + '-property',
-    source : source.source,
-    type : "circle",
-    filter : source.filtered,
-    minzoom : 0,
-    paint : {
-        "circle-radius": 2,
-        "circle-color": "#e5e5e5",
-        "circle-stroke-width": 0,
-        "circle-opacity": 0.5
-    }
-
-  };
-}
-
-function buildMapBoxDrawLayerStyle() {
-  return [{
-      'id': 'gl-draw-polygon-fill-inactive',
-      'type': 'fill',
-      'filter': ['all', ['==', 'active', 'false'],
-          ['==', '$type', 'Polygon'],
-          ['!=', 'mode', 'static']
-      ],
-      'paint': {
-          'fill-color': 'black', //#3bb2d0',
-          'fill-outline-color': 'black', //#3bb2d0',
-          'fill-opacity': 0, //0.1
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-fill-active',
-      'type': 'fill',
-      'filter': ['all', ['==', 'active', 'true'],
-          ['==', '$type', 'Polygon']
-      ],
-      'paint': {
-          'fill-color': 'black', //'#fbb03b',
-          'fill-outline-color': '#fbb03b',
-          'fill-opacity': 0.1
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-midpoint',
-      'type': 'circle',
-      'filter': ['all', ['==', '$type', 'Point'],
-          ['==', 'meta', 'midpoint']
-      ],
-      'paint': {
-          'circle-radius': 3,
-          'circle-color': 'black', //'#fbb03b',
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-stroke-inactive',
-      'type': 'line',
-      'filter': ['all', ['==', 'active', 'false'],
-          ['==', '$type', 'Polygon'],
-          ['!=', 'mode', 'static']
-      ],
-      'layout': {
-          'line-cap': 'round',
-          'line-join': 'round'
-      },
-      'paint': {
-          'line-color': 'black', //#3bb2d0',
-          'line-width': 2
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-stroke-active',
-      'type': 'line',
-      'filter': ['all', ['==', 'active', 'true'],
-          ['==', '$type', 'Polygon']
-      ],
-      'layout': {
-          'line-cap': 'round',
-          'line-join': 'round'
-      },
-      'paint': {
-          'line-color': 'black', //'#fbb03b',
-          'line-dasharray': [0.2, 2],
-          'line-width': 2
-      }
-  },
-  {
-      'id': 'gl-draw-line-inactive',
-      'type': 'line',
-      'filter': ['all', ['==', 'active', 'false'],
-          ['==', '$type', 'LineString'],
-          ['!=', 'mode', 'static']
-      ],
-      'layout': {
-          'line-cap': 'round',
-          'line-join': 'round'
-      },
-      'paint': {
-          'line-color': 'black', //#3bb2d0',
-          'line-width': 2
-      }
-  },
-  {
-      'id': 'gl-draw-line-active',
-      'type': 'line',
-      'filter': ['all', ['==', '$type', 'LineString'],
-          ['==', 'active', 'true']
-      ],
-      'layout': {
-          'line-cap': 'round',
-          'line-join': 'round'
-      },
-      'paint': {
-          'line-color': 'black', //'#fbb03b',
-          'line-dasharray': [0.2, 2],
-          'line-width': 2
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive',
-      'type': 'circle',
-      'filter': ['all', ['==', 'meta', 'vertex'],
-          ['==', '$type', 'Point'],
-          ['!=', 'mode', 'static']
-      ],
-      'paint': {
-          'circle-radius': 5,
-          'circle-color': '#fff'
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-and-line-vertex-inactive',
-      'type': 'circle',
-      'filter': ['all', ['==', 'meta', 'vertex'],
-          ['==', '$type', 'Point'],
-          ['!=', 'mode', 'static']
-      ],
-      'paint': {
-          'circle-radius': 3,
-          'circle-color': 'black', //'#fbb03b',
-      }
-  },
-  {
-      'id': 'gl-draw-point-point-stroke-inactive',
-      'type': 'circle',
-      'filter': ['all', ['==', 'active', 'false'],
-          ['==', '$type', 'Point'],
-          ['==', 'meta', 'feature'],
-          ['!=', 'mode', 'static']
-      ],
-      'paint': {
-          'circle-radius': 5,
-          'circle-opacity': 1,
-          'circle-color': '#fff'
-      }
-  },
-  {
-      'id': 'gl-draw-point-inactive',
-      'type': 'circle',
-      'filter': ['all', ['==', 'active', 'false'],
-          ['==', '$type', 'Point'],
-          ['==', 'meta', 'feature'],
-          ['!=', 'mode', 'static']
-      ],
-      'paint': {
-          'circle-radius': 3,
-          'circle-color': 'black', //#3bb2d0',
-      }
-  },
-  {
-      'id': 'gl-draw-point-stroke-active',
-      'type': 'circle',
-      'filter': ['all', ['==', '$type', 'Point'],
-          ['==', 'active', 'true'],
-          ['!=', 'meta', 'midpoint']
-      ],
-      'paint': {
-          'circle-radius': 7,
-          'circle-color': '#fff'
-      }
-  },
-  {
-      'id': 'gl-draw-point-active',
-      'type': 'circle',
-      'filter': ['all', ['==', '$type', 'Point'],
-          ['!=', 'meta', 'midpoint'],
-          ['==', 'active', 'true']
-      ],
-      'paint': {
-          'circle-radius': 5,
-          'circle-color': 'black', //'#fbb03b',
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-fill-static',
-      'type': 'fill',
-      'filter': ['all', ['==', 'mode', 'static'],
-          ['==', '$type', 'Polygon']
-      ],
-      'paint': {
-          'fill-color': 'black', //'#404040',
-          'fill-outline-color': 'black', //#404040',
-          'fill-opacity': 0 // 0.1
-      }
-  },
-  {
-      'id': 'gl-draw-polygon-stroke-static',
-      'type': 'line',
-      'filter': ['all', ['==', 'mode', 'static'],
-          ['==', '$type', 'Polygon']
-      ],
-      'layout': {
-          'line-cap': 'round',
-          'line-join': 'round'
-      },
-      'paint': {
-          'line-color': 'black', //'#404040',
-          'line-width': 2
-      }
-  },
-  {
-      'id': 'gl-draw-line-static',
-      'type': 'line',
-      'filter': ['all', ['==', 'mode', 'static'],
-          ['==', '$type', 'LineString']
-      ],
-      'layout': {
-          'line-cap': 'round',
-          'line-join': 'round'
-      },
-      'paint': {
-          'line-color': 'black', //'#404040',
-          'line-width': 2
-      }
-  },
-  {
-      'id': 'gl-draw-point-static',
-      'type': 'circle',
-      'filter': ['all', ['==', 'mode', 'static'],
-          ['==', '$type', 'Point']
-      ],
-      'paint': {
-          'circle-radius': 5,
-          'circle-color': 'black', //'#404040'
-      }
-  }];
-}
-
 function clean(object) {
 
   var clean = {};
@@ -3782,6 +3791,9 @@ function clean(object) {
 }
 
 function wrangle(data, options) {
+
+  var t0 = performance.now();
+  console.log("call wrangle");
 
   var wrangled = {
     options : options || {},
@@ -3987,6 +3999,9 @@ function wrangle(data, options) {
 
     wrangled.properties = properties;
   }
+
+  var t1 = performance.now();
+  console.log("call to wrangle took " + (t1 - t0) + " milliseconds.");
 
   return wrangled;
 }

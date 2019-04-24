@@ -4,7 +4,10 @@
   "options" : {
     "draw" : false,
     "data" : false,
+    "filter" : true,
     "download" : false,
+    "labels" : false,
+    "export" : false,
     "active" : "buildings",
     "camera" : "camera2"
   },
@@ -27,8 +30,9 @@
       "id" : "camera3",
       "center": [151.19380634106665,-33.89392474265617],
       "zoom": 13.929816503422819,
-      "bearing": 0.3294129655434972,
-      "pitch": 50
+      "bearing": 0,
+      "pitch": 0,
+      "plan" : true
     }
   ],
   "boundaries" : [
@@ -70,15 +74,16 @@
             "Total_Area",
             "MAJORUSE",
             "typology",
-            "Percent_FnB",
-            "Percent_HigherEd",
-            "Percent_ICT",
-            "Percent_LifeScience",
-            "Percent_OtherOffice",
             "Total_Empl"
           ]
         },
         "style" : [
+          {
+            "property" : "MAJORUSE",
+            "filtered" : [],
+            "hidden" : [],
+            "selected" : ["CM", "CP"]
+          },
           {
             "property" : "Total_Area",
             "color" : "YlGnBu",
@@ -87,23 +92,23 @@
           },
           {
             "property" : "Percent_FnB",
-            "color" : "PuBuGn"
+            "color" : "RdYlBu"
           },
           {
             "property" : "Percent_HigherEd",
-            "color" : "PuBuGn"
+            "color" : "RdYlBu"
           },
           {
             "property" : "Percent_ICT",
-            "color" : "PuBuGn"
+            "color" : "RdYlBu"
           },
           {
             "property" : "Percent_LifeScience",
-            "color" : "PuBuGn"
+            "color" : "RdYlBu"
           },
           {
             "property" : "Percent_OtherOffice",
-            "color" : "PuBuGn"
+            "color" : "RdYlBu"
           },
           {
             "property" : "Total_Empl",

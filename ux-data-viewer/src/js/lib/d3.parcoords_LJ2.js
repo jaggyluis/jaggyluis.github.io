@@ -1315,7 +1315,8 @@ pc.updateAxes = function() {
     //.transition()
       //.duration(__.duration)
       .text(dimensionLabels)
-      .attr("transform", "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")");
+      .attr("transform", "translate(0,-5) rotate(" + __.dimensionTitleRotation + ")")
+      //.append("svg:title").text(dimensionLabels);
 
   // Exit
   g_data.exit().remove();

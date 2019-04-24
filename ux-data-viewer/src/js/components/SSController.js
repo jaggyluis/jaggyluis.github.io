@@ -1,6 +1,9 @@
 
-// Control implemented as ES6 class
-class SSController {
+export default class SSController {
+
+    constructor(options) {
+      this._options = options || {};
+    }
 
     setMapController(controller) {
       this._mapController = controller;
@@ -16,11 +19,43 @@ class SSController {
         this._toggleButton = this.buildToggleButton();
         this._helpButton = this.buildHelpButton();
         this._labelsButton = this.buildLabelsButton();
+        this._exportButton = this.buildExportSchemaButton();
+
+        this._cameraButton = this.buildCameraButton();
+        this._cameraLabel = this.buildCameraLabel();
+        this._saveButton = this.buildSaveCameraButton();
+        this._selectButton = this.buildSelectCameraButton();
+        this._deleteButton = this.buildDeleteCameraButton();
+        this._nextButton = this.buildNextCameraButton();
+
+        this._iterDiv = document.createElement("div");
+        this._iterDiv.classList.add("mapboxgl-ctrl-group");
+        this._iterDiv.classList.add("sub-group");
+        this._iterDiv.classList.add("collapsed");
+
+        var indicator = document.createElement("div");
+        indicator.classList.add("mapboxgl-popup-tip");
+        indicator.classList.add("ctrl")
+
+        this._iterDiv.appendChild(indicator);
+        this._iterDiv.appendChild(this._cameraLabel);
+        this._iterDiv.appendChild(this._nextButton);
+        this._iterDiv.appendChild(this._saveButton);
+        //this._iterDiv.appendChild(this._selectButton);
+        this._iterDiv.appendChild(this._deleteButton);
+
+        // add everything ---
 
         this._container.appendChild(this._snapshotButton);
+        this._container.appendChild(this._iterDiv);
+        this._container.appendChild(this._cameraButton);
+
         this._container.appendChild(this._toggleButton);
         this._container.appendChild(this._labelsButton);
         this._container.appendChild(this._helpButton);
+        this._container.appendChild(this._exportButton);
+
+        this.updateCameras();
 
         return this._container;
     }
@@ -28,6 +63,249 @@ class SSController {
     onRemove() {
         this._container.parentNode.removeChild(this._container);
         this._map = undefined;
+    }
+
+    updateCameras() {
+
+      var camera = this._mapController.getCamera();
+      var handlers = [
+        'scrollZoom',
+        'boxZoom',
+        'dragRotate',
+        'dragPan',
+        'keyboard',
+        'doubleClickZoom',
+        'touchZoomRotate'
+      ];
+
+      console.log(camera);
+
+      this._cameraLabel.innerHTML = camera;
+
+      if (!(this._mapController) || this._mapController.getCameras().length == 0) {
+        if (!this._nextButton.firstChild.classList.contains("inactive")) {
+          this._nextButton.firstChild.classList.add("inactive");
+        }
+        if (!this._nextButton.classList.contains("disabled")) {
+          this._nextButton.classList.add("disabled");
+        }
+      } else {
+        if (this._nextButton.firstChild.classList.contains("inactive")) {
+          this._nextButton.firstChild.classList.remove("inactive");
+        }
+        if (this._nextButton.classList.contains("disabled")) {
+          this._nextButton.classList.remove("disabled");
+        }
+      }
+
+      if (camera === "default") {
+
+        if (!this._deleteButton.classList.contains("collapsed")) {
+          this._deleteButton.classList.add("collapsed");
+        }
+
+        this._saveButton.title = "Save new view";
+        this._saveButton.firstChild.src = "img/save-icon.png";
+        if (this._saveButton.classList.contains("collapsed")) {
+          this._saveButton.classList.remove("collapsed");
+        }
+
+        // handlers.forEach(h => {
+        //   this._map[h].enable();
+        // })
+
+      } else {
+
+        if (this._deleteButton.classList.contains("collapsed")) {
+          this._deleteButton.classList.remove("collapsed");
+        }
+
+        this._saveButton.title = "Update view";
+        this._saveButton.firstChild.src = "img/reset-icon.png";
+        // if (!this._saveButton.classList.contains("collapsed")) {
+        //   this._saveButton.classList.add("collapsed");
+        // }
+
+        // handlers.forEach(h => {
+        //   this._map[h].disable();
+        // })
+      }
+
+    }
+
+    buildCameraLabel() {
+
+      var label = document.createElement("div");
+      label.classList.add("mapbox-custom-label");
+
+      return label;
+    }
+
+    buildCameraButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/perspective-icon.png";
+      img.classList.add("mapbox-custom-ctrl");
+      img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Camera";
+      button.appendChild(img);
+      button.selected = false;
+      button.addEventListener("click", e => {
+
+        console.log("toggle");
+
+        if (button.selected) {
+          button.selected = false;
+
+          if (!img.classList.contains("inactive")) {
+            img.classList.add("inactive");
+          }
+
+          if (!self._iterDiv.classList.contains("collapsed")) {
+            self._iterDiv.classList.add("collapsed");
+          }
+
+        } else {
+          button.selected = true;
+          img.classList.remove("inactive");
+          self._iterDiv.classList.remove("collapsed");
+        }
+
+      });
+
+      return button;
+    }
+
+    buildSelectCameraButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/pointer-icon.png";
+      img.classList.add("mapbox-custom-ctrl");
+      //img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Select View";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+      });
+
+      return button;
+
+    }
+
+    buildDeleteCameraButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/trash-mapbox-icon.svg";
+      img.classList.add("mapbox-custom-ctrl");
+      //img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Delete View";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+        if (self._mapController) {
+          self._mapController.deleteCamera(self._mapController.getCamera());
+        }
+
+      });
+
+      return button;
+    }
+
+    buildSaveCameraButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/save-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
+      // img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Save View";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+        if (self._mapController) {
+          self._mapController.saveCamera(self._mapController.getCamera());
+        }
+
+      });
+
+      return button;
+    }
+
+    buildNextCameraButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/right-arrow-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
+      //img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Next Saved View [Tab]";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+        if (self._mapController) {
+
+          if (self._mapController.getCameras().length) {
+            self._mapController.nextCamera();
+          }
+
+        }
+
+      });
+
+      return button;
+    }
+
+    buildExportSchemaButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/export-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
+      //img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      //button.classList.add("disabled");
+      button.type = "button";
+      button.title = "Export Scheme";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+      });
+
+      return button;
     }
 
     buildLabelsButton() {
@@ -86,60 +364,21 @@ class SSController {
       var snapshotButton = document.createElement("button");
       snapshotButton.classList.add("mapboxgl-ctrl-icon");
       snapshotButton.type = "button";
-      snapshotButton.title = "Snapshot";
+      snapshotButton.title = "Snapshot Map";
       snapshotButton.appendChild(snapshotImg);
       snapshotButton.addEventListener("click", e => {
 
         console.log("snapshot");
 
-        html2canvas(document.body).then(canvas => {
+        self._map.getCanvas().toBlob(function (blob) {
 
-          // console.log("-> canvas");
-          //
-          // var img = new Image();
-          // img.src = canvas.toDataURL();
-          //
-          // var a = document.createElement('a');
-          // a.href = img.src;
-          // a.download = "output.png";
-          // document.body.appendChild(a);
-          // a.click();
-          // document.body.removeChild(a);
-          //
-          // console.log("-> done");
+          saveAs(blob, 'output.png');
 
-          download(canvas, "output.png");
+          console.log('saved as output.png');
 
         });
+
       });
-
-      // Source from:  http://stackoverflow.com/questions/18480474/how-to-save-an-image-from-canvas
-
-      /* Canvas Donwload */
-      function download(canvas, filename) {
-        /// create an "off-screen" anchor tag
-        var lnk = document.createElement('a'), e;
-
-        /// the key here is to set the download attribute of the a tag
-        lnk.download = filename;
-
-        /// convert canvas content to data-uri for link. When download
-        /// attribute is set the content pointed to by link will be
-        /// pushed as "download" in HTML5 capable browsers
-        lnk.href = canvas.toDataURL("image/png;base64");
-
-        /// create a "fake" click-event to trigger the download
-        if (document.createEvent) {
-          e = document.createEvent("MouseEvents");
-          e.initMouseEvent("click", true, true, window,
-                           0, 0, 0, 0, 0, false, false, false,
-                           false, 0, null);
-
-          lnk.dispatchEvent(e);
-        } else if (lnk.fireEvent) {
-          lnk.fireEvent("onclick");
-        }
-      }
 
       return snapshotButton;
     }
@@ -187,6 +426,8 @@ class SSController {
     fire(type) {
       if (type == "toggle") {
         this._toggleButton.click();
+      } else if (type == "camera") {
+        this.updateCameras();
       }
     }
 
@@ -194,28 +435,26 @@ class SSController {
 
       var self = this;
 
-      var toggleImg = document.createElement("img");
-      toggleImg.src = "img/cube-icon.png";
-      toggleImg.classList.add("mapbox-custom-ctrl");
-      toggleImg.classList.add("inactive");
+      var img = document.createElement("img");
+      img.src = "img/cube-icon.png";
+      img.classList.add("mapbox-custom-ctrl");
+      img.classList.add("inactive");
 
-      var toggleButton = document.createElement("button");
-      toggleButton.classList.add("mapboxgl-ctrl-icon");
-      toggleButton.type = "button";
-      toggleButton.title = "3D View";
-      toggleButton.appendChild(toggleImg);
-      toggleButton.selected = false;
-      toggleButton.pitch = 20;
-      toggleButton.addEventListener("click", e => {
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "3D View";
+      button.appendChild(img);
+      button.selected = false;
+      button.addEventListener("click", e => {
 
         console.log("toggle");
 
-        if (toggleButton.selected) {
-          toggleButton.selected = false;
-          toggleImg.src = "img/cube-icon.png";
-          toggleImg.classList.add("inactive");
-          toggleButton.title = "3D View";;
-          toggleButton.pitch = self._map.getPitch();
+        if (button.selected) {
+          button.selected = false;
+          //img.src = "img/cube-icon.png";
+          img.classList.add("inactive");
+          button.title = "3D View";;
 
           self._map.setPitch(0);
           self._map.setBearing(0);
@@ -223,22 +462,25 @@ class SSController {
           self._map.dragRotate.disable();
 
         } else {
-          toggleButton.selected = true;
-          //toggleImg.src = "img/toggle-icon.png";
-          toggleImg.classList.remove("inactive");
-          toggleButton.title = "Plan View";
+          button.selected = true;
+          img.classList.remove("inactive");
+          button.title = "Plan View";
 
-          self._map.setPitch(toggleButton.pitch);
+          self._map.setPitch(30);
 
           self._map.touchZoomRotate.enableRotation();
           self._map.dragRotate.enable();
         }
 
-        self.pitchControl(!toggleButton.selected);
+        // if (e.isTrusted) {
+        //   self._mapController.toggleCamera("default");
+        // }
+
+        self.pitchControl(!button.selected);
 
       });
 
-      return toggleButton;
+      return button;
     }
 
     buildHelpButton() {

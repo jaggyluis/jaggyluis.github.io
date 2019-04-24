@@ -68,8 +68,15 @@ d3.divgrid = function(source, config) {
     __.reverse = __.sort === k ? !__.reverse : true;
     __.sort = k;
 
+    var type = __.source.states[k].propertyType;
+
     __.data.sort(function(a,b) {
-      return a[__.sort] - b[__.sort];
+      if (type === "string") {
+        return ('' + a[__.sort]).localeCompare('' + b[__.sort]);
+      } else {
+        return a[__.sort] - b[__.sort];
+      }
+
     });
 
     if (__.reverse) __.data.reverse();
@@ -353,6 +360,7 @@ d3.divgrid = function(source, config) {
       var label = document.createElement("div");
       label.classList.add("cell-label");
       label.innerHTML = c;
+      label.title = c;
 
       var reverseImg = document.createElement("img");
       reverseImg.classList.add("box-menu-img");
@@ -362,7 +370,7 @@ d3.divgrid = function(source, config) {
 
       var reverseButton = document.createElement("div");
       reverseButton.classList.add("box-menu-item");
-      reverseButton.style = " margin: 0; padding-left: 5px; margin: 1px; position: absolute; top: 0; right: 0;";
+      reverseButton.style = " padding: 0; margin: 1px; top: 0; max-width: 10px; min-width: 0px;";
       reverseButton.style.visibility = "hidden";
       reverseButton.appendChild(reverseImg);
 
