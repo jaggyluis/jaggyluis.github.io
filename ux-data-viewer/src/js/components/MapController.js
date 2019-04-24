@@ -1,7 +1,7 @@
-import MapStyleBuilder from "/js/components/MapStyleBuilder.js";
-import SSController from "/js/components/SSController.js";
+import MapStyleBuilder from "./MapStyleBuilder.js";
+import SSController from "./SSController.js";
 
-import RadiusMode from "/js/components/RadiusMode.js";
+import RadiusMode from "./RadiusMode.js";
 
 const { MapboxLayer } = deck;
 

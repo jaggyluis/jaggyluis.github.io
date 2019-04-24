@@ -1,4 +1,4 @@
-import MapController from "/js/components/MapController.js";
+import MapController from "./MapController.js";
 
 export default class MapView {
 
