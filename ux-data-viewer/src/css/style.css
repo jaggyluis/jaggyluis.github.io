@@ -212,7 +212,7 @@ img {}
 }
 
 .document-label:hover {
-  /* color: black; */
+  background-color: grey;
 }
 
 .document-menu-item {
@@ -519,11 +519,25 @@ img {}
   width: auto;
 }
 
+.legend-header-option.active {
+  background: black;
+  color: white;
+  font-weight: bold;
+}
+
+.legend-header-option.active:hover {
+  background: grey;
+}
+
 .legend-header-option:hover  {
   background-color: var(--hover-color);
 }
 
 .legend-header-option + .legend-header-option {
+  border-top: 1px solid var(--border-color);
+}
+
+.legend-indicator + .legend-header-option {
   border-top: 1px solid var(--border-color);
 }
 

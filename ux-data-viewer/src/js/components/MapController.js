@@ -11,6 +11,7 @@ export default class MapController {
     this.map = map;
     this.layers = {};
     this.sources = {};
+    this.mask = null;
     this.legend = null;
     this.keys = [];
     this.loading = false;
@@ -21,6 +22,8 @@ export default class MapController {
     this.options = {
       draw : options && options.draw === false ? false : true,
       camera : "default",
+      mask : true,
+      boundary: true,
     };
 
     // older browsers
@@ -168,14 +171,11 @@ export default class MapController {
       if (e.type === "draw.update" && e.features && e.features.length) {
         var centroids = e.features.filter(f => f.geometry.type === "Point" && f.properties.meta === "centroid");
 
-        console.log(centroids);
-
         if (centroids.length) {
           self.draw.changeMode("radius", {centroidId : centroids[0].id});
           return;
         }
       }
-
 
       self.envelope = self.draw.getAll().features.filter(f => f.geometry.type === "Polygon");
       self.envelope.forEach(f => {
@@ -204,15 +204,26 @@ export default class MapController {
 
       self.updateLegend();
 
+      var features = turf.featureCollection(self.envelope);
+      var masked = turf.mask(features);
+
+      self.mask.data.features = self.envelope.length ? [masked] : [];
+
+      self.map.getSource('mask').setData(self.mask.data);
+
     };
 
     map.on('draw.create', updateDraw);
     map.on('draw.delete', updateDraw);
     map.on('draw.update', updateDraw);
     map.on('draw.modechange', (e) => {
-      //console.log(e);
+
+      console.log(e);
+
     });
     map.on('draw.selectionchange', (e) => {
+
+      console.log(e);
 
       var features = e.features;
 
@@ -222,7 +233,7 @@ export default class MapController {
         }
       })
 
-    })
+    });
 
     if (options.draw !== false) {
 
@@ -242,13 +253,23 @@ export default class MapController {
       selectControl.addEventListener("click", e => {
         if (self.draw.getMode() !== "static") {
           self.draw.changeMode("static");
-          if (!selectImg.classList.contains("inactive")) {
-            selectImg.classList.add("inactive");
-          }
+          self.map.fire("draw.modechange", { mode: "static"});
         } else {
           self.draw.changeMode('simple_select');
-          selectImg.classList.remove("inactive");
+          self.map.fire("draw.modechange", { mode: "simple_select"});
         }
+      });
+
+      self.map.on('draw.modechange', (e) => {
+
+        if (e.mode === "static") {
+          if (!selectImg.classList.contains("inactive")) { selectImg.classList.add("inactive"); }
+          self.map.setPaintProperty("mask-boundary", "fill-opacity", self.options.mask ? 1 : 0);
+        } else {
+          selectImg.classList.remove("inactive");
+          self.map.setPaintProperty("mask-boundary", "fill-opacity", 0.6);
+        }
+
       });
 
       var radiusImg = document.createElement("img");
@@ -272,22 +293,73 @@ export default class MapController {
         "type": "symbol",
         "source": "mapbox-gl-draw-hot",
         "layout": {
-            "symbol-placement": "line",
+            "symbol-placement": "line-center",
             //"text-font": ["Open Sans Regular"],
             "text-field": ["get", "datum"],
             "text-allow-overlap" : true,
             "text-ignore-placement" : true,
             "text-justify": "center",
-            "text-max-width" : 1000,
+            "text-max-width" : 0,
             //"text-size": 32,
-            "text-offset": [0, 0.3],
-            "text-anchor": "top"
+            "text-offset": [0, 0.6],
+            "text-anchor": "center"
         },
         "paint": {}
       });
     }
 
-    console.log(self.map.style.sourceCaches);
+    var mask = {
+      'type': 'geojson',
+      'data': {
+        'type': 'FeatureCollection',
+        'features': []
+      }
+    }
+
+    self.mask = mask;
+    self.map.addSource("mask", mask);
+    self.map.addLayer({
+        id : "mask-boundary",
+        source : "mask",
+        type: 'fill',
+        minzoom: 0,
+        paint: {
+          'fill-opacity': self.options.mask ? 1 : 0,
+          'fill-color' : "#FFF",
+        }
+    }, "gl-draw-polygon-fill-inactive.cold");
+
+    //console.log(self.map.style.sourceCaches);
+    //console.log(map.getStyle().layers);
+  }
+
+  toggleBoundaryVisible(boundary) {
+    this.options.boundary = boundary;
+
+    var visibility = this.options.boundary ? 'visible' : 'none';
+    var layers = this.map.getStyle().layers.filter(l => l.id.match('draw') && l.id.match('static'));
+
+    console.log(layers);
+
+    layers.forEach(l => {
+      this.map.setLayoutProperty(l.id, 'visibility', visibility);
+    })
+  }
+
+  isBoundaryVisible() {
+    return this.options.boundary;
+  }
+
+  toggleMask(mask) {
+    this.options.mask = mask;
+
+    if (this.draw.getMode() === "static") {
+      this.map.fire("draw.modechange", { mode: "static"}); // update the draw ---
+    }
+  }
+
+  isMasked() {
+    return this.options.mask;
   }
 
   addCamera(key, camera) {
@@ -599,6 +671,7 @@ export default class MapController {
     self.sources[key].base = self.sources[key].options.base || "";
     self.sources[key].mapped = [];
     self.sources[key].visible = true;
+    self.sources[key].legend = true;
     self.sources[key].xor = self.sources[key].options.boundary ? self.sources[key].options.boundary.xor || false : false;
     self.sources[key].boundaries = self.sources[key].options.boundary ? self.sources[key].options.boundary.filtered || null : null;
     self.sources[key].brushed = [];
@@ -3627,7 +3700,7 @@ export default class MapController {
 
         var source = self.sources[s];
 
-        if (source.active && source.visible) {
+        if (source.visible) {
 
           var legend = self.legend;
 
@@ -3656,7 +3729,7 @@ export default class MapController {
           hprop.classList.add("legend-header-property");
           hprop.classList.add("legend-header-option")
           hprop.title = "Active Property"
-          hprop.innerHTML = source.active;
+          hprop.innerHTML = source.active || "no active property";
           hsel.appendChild(hprop);
 
           // var hprop = document.createElement("select");
@@ -3668,12 +3741,12 @@ export default class MapController {
           hdrop.classList.add("collapsed");
           hsel.appendChild(hdrop);
 
+          var hdropIndicator = document.createElement("div");
+          hdropIndicator.classList.add("legend-indicator");
+          hdropIndicator.classList.add("mapboxgl-popup-tip");
+
           var props = self.getProperties(source.source, true, false);
           props.forEach(p => {
-
-            if (p === source.active) {
-              return;
-            }
 
             var hopt = document.createElement("div");
             hopt.classList.add("legend-header-property");
@@ -3681,12 +3754,20 @@ export default class MapController {
             hopt.innerHTML = p;
             hopt.value = p;
 
+            if (p === source.active) {
+              hopt.classList.add("active");
+            }
+
             hopt.addEventListener("click", () => {
               self.selectProperty(source.source, p);
             })
 
             hdrop.appendChild(hopt);
           });
+
+          if (hdrop.childNodes.length) {
+            hdrop.insertBefore(hdropIndicator, hdrop.childNodes[hdrop.childNodes.length -1]);
+          }
 
           hprop.addEventListener("click", () => {
             //hdrop.classList.toggle("collapsed");
@@ -3711,10 +3792,18 @@ export default class MapController {
 
           });
 
+          if (!source.legend) {
+            readout.classList.add("collapsed");
+            indicator.classList.add("collapsed");
+            header.classList.remove("selected");
+          }
+
           hkey.addEventListener("click", e => {
             readout.classList.toggle("collapsed");
             indicator.classList.toggle("collapsed");
             header.classList.toggle("selected");
+
+            source.legend = !source.legend;
 
             if (!readout.classList.contains("collapsed")) {
               readout.scrollIntoView();
@@ -3722,23 +3811,23 @@ export default class MapController {
             } else {
               hkey.title = "Show Legend"
             }
-          })
+          });
+
+
 
           header.appendChild(indicator);
           header.appendChild(hkey);
           header.appendChild(hsel);
-
-          readout.appendChild(content);
-
-          readouts.appendChild(readout);
           headers.appendChild(header);
 
-          self.buildLegend(s, content);
+          if (source.active) {
 
-          //hkey.click();
+            readout.appendChild(content);
+            readouts.appendChild(readout);
+
+            self.buildLegend(s, content);
+          }
         }
-
-
 
     });
   }

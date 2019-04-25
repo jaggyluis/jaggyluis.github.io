@@ -326,6 +326,9 @@ RadiusMode.onSetup = function(opts) { // taken directly from draw_line_string --
   });
 
   this.map.getCanvas().style.cursor = 'crosshair';
+  this.map.fire('draw.modechange', {
+    mode : "radius",
+  });
 
   return {
     line,
@@ -361,9 +364,13 @@ RadiusMode.onStop = function(state) {
 
   // check to see if we've deleted this feature
   if (this.getFeature(state.line.id) === undefined) {
+
     this.map.fire('draw.update', {
       features: [],
     });
+
+    this.map.getCanvas().style.cursor = '';
+
     return;
   }
   // remove last added coordinate
@@ -381,7 +388,7 @@ RadiusMode.onStop = function(state) {
     //     radius: (lineDistance(lineGeoJson) * 1000).toFixed(1),
     //   },
     // };
-    const pointWithRadius = createGeoJSONCircle(lineGeoJson.geometry.coordinates[0], (lineDistance(lineGeoJson)), null, 128);
+    const pointWithRadius = createGeoJSONCircle(lineGeoJson.geometry.coordinates[0], (lineDistance(lineGeoJson)), null, 256);
     const centroid = this.newFeature({
       type: "Feature",
       properties: {
@@ -422,6 +429,8 @@ RadiusMode.onStop = function(state) {
   } else {
     this.deleteFeature([state.line.id], { silent: true });
     this.changeMode('simple_select', {}, { silent: true });
+
+    this.map.getCanvas().style.cursor = '';
   }
 };
 

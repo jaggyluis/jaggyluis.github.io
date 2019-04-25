@@ -587,23 +587,38 @@ export default class MapView {
     docContent.classList.add("collapsed"); // adde-d ---
     docContent.id = label + "-document-content";
 
+
     doc.appendChild(docContent);
 
     self.lscroll.appendChild(doc);
 
-    // docLabel.addEventListener("click", e=> { // disable ---
+    // self.lscroll.appendChild(docHeader);
+    // self.lscroll.appendChild(docContent);
     //
-    //   if (docContent.classList.contains('collapsed')) {
+    // var headers = document.getElementsByClassName("document-header");
+    // for (var i = 0; i<headers.length; i++) {
+    //   var j = headers.length - (i + 1);
     //
-    //     docContent.classList.remove("collapsed");
-    //     docLabel.innerHTML = " - " + label;
+    //   var header = headers[i];
     //
-    //   } else {
+    //   header.style.top = (i * 27) + "px";
+    //   header.style.bottom = ((j * 27) - 1) + "px";
     //
-    //     docContent.classList.add("collapsed");
-    //     docLabel.innerHTML = " + " + label;
-    //   }
-    // });
+    // }
+
+    docLabel.addEventListener("click", e=> { // disable ---
+
+      var content = document.getElementsByClassName("document-content");
+
+      for (var i = 0; i<content.length; i++) {
+        if (!content[i].classList.contains("collapsed")) {
+          content[i].classList.add("collapsed");
+        }
+      }
+
+      docContent.classList.remove("collapsed");
+
+    });
 
     docViewButton.addEventListener("click", e => {
 
@@ -640,18 +655,12 @@ export default class MapView {
           docFilterImg.classList.remove("selected");
           box.classList.add("collapsed");
 
-          docContent.classList.add("collapsed"); // adde-d ---
-
-
         } else {
 
           docFilterButton.selected = true;
 
           docFilterImg.classList.add("selected");
           box.classList.remove("collapsed");
-
-          docContent.classList.remove("collapsed"); // adde-d ---
-
         }
     });
 

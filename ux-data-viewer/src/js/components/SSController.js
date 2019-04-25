@@ -18,11 +18,36 @@ export default class SSController {
         this._snapshotButton = this.buildSnapshotButton();
         this._toggleButton = this.buildToggleButton();
         this._helpButton = this.buildHelpButton();
-        this._labelsButton = this.buildLabelsButton();
         this._exportButton = this.buildExportSchemaButton();
 
+        // layers ---
+
+        this._layersButton = this.buildLayersButton();
+        this._maskButton = this.buildMaskButton();
+        this._boundaryButton = this.buildBoundaryButton();
+        this._labelsButton = this.buildLabelsButton();
+
+        this._layerDiv = document.createElement("div");
+        this._layerDiv.classList.add("mapboxgl-ctrl-group");
+        this._layerDiv.classList.add("sub-group");
+        this._layerDiv.classList.add("collapsed");
+
+        var _layerIndicator = document.createElement("div");
+        _layerIndicator.classList.add("mapboxgl-popup-tip");
+        _layerIndicator.classList.add("ctrl")
+
+        this._layerDiv.appendChild(_layerIndicator);
+        this._layerDiv.appendChild(this.buildLabel("boundary"));
+        this._layerDiv.appendChild(this._boundaryButton);
+        this._layerDiv.appendChild(this.buildLabel("mask"));
+        this._layerDiv.appendChild(this._maskButton);
+        this._layerDiv.appendChild(this.buildLabel("labels"));
+        this._layerDiv.appendChild(this._labelsButton);
+
+        // camera ---
+
         this._cameraButton = this.buildCameraButton();
-        this._cameraLabel = this.buildCameraLabel();
+        this._cameraLabel = this.buildLabel();
         this._saveButton = this.buildSaveCameraButton();
         this._selectButton = this.buildSelectCameraButton();
         this._deleteButton = this.buildDeleteCameraButton();
@@ -33,11 +58,11 @@ export default class SSController {
         this._iterDiv.classList.add("sub-group");
         this._iterDiv.classList.add("collapsed");
 
-        var indicator = document.createElement("div");
-        indicator.classList.add("mapboxgl-popup-tip");
-        indicator.classList.add("ctrl")
+        var _iterIndicator = document.createElement("div");
+        _iterIndicator.classList.add("mapboxgl-popup-tip");
+        _iterIndicator.classList.add("ctrl")
 
-        this._iterDiv.appendChild(indicator);
+        this._iterDiv.appendChild(_iterIndicator);
         this._iterDiv.appendChild(this._cameraLabel);
         this._iterDiv.appendChild(this._nextButton);
         this._iterDiv.appendChild(this._saveButton);
@@ -47,11 +72,15 @@ export default class SSController {
         // add everything ---
 
         this._container.appendChild(this._snapshotButton);
+
         this._container.appendChild(this._iterDiv);
         this._container.appendChild(this._cameraButton);
 
         this._container.appendChild(this._toggleButton);
-        this._container.appendChild(this._labelsButton);
+
+        this._container.appendChild(this._layerDiv);
+        this._container.appendChild(this._layersButton);
+
         this._container.appendChild(this._helpButton);
         this._container.appendChild(this._exportButton);
 
@@ -133,10 +162,14 @@ export default class SSController {
 
     }
 
-    buildCameraLabel() {
+    buildLabel(text) {
 
       var label = document.createElement("div");
       label.classList.add("mapbox-custom-label");
+
+      if (text) {
+        label.innerHTML = text;
+      }
 
       return label;
     }
@@ -175,6 +208,10 @@ export default class SSController {
           button.selected = true;
           img.classList.remove("inactive");
           self._iterDiv.classList.remove("collapsed");
+
+          if (self._layersButton.selected) {
+            self._layersButton.click();
+          }
         }
 
       });
@@ -308,21 +345,135 @@ export default class SSController {
       return button;
     }
 
+    buildLayersButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/levels-icon.png";
+      img.classList.add("mapbox-custom-ctrl");
+      img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Layers";
+      button.appendChild(img);
+      button.selected = false;
+      button.addEventListener("click", e => {
+
+        console.log("toggle");
+
+        if (button.selected) {
+          button.selected = false;
+
+          if (!img.classList.contains("inactive")) {
+            img.classList.add("inactive");
+          }
+
+          if (!self._layerDiv.classList.contains("collapsed")) {
+            self._layerDiv.classList.add("collapsed");
+          }
+
+        } else {
+          button.selected = true;
+          img.classList.remove("inactive");
+          self._layerDiv.classList.remove("collapsed");
+
+          if (self._cameraButton.selected) {
+            self._cameraButton.click();
+          }
+        }
+
+      });
+
+      return button;
+    }
+
+    buildBoundaryButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/view-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
+      //img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      //button.classList.add("disabled");
+      button.type = "button";
+      button.title = "Boundaries";
+      button.selected = false;
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+        if (button.selected) {
+          button.selected = false;
+          img.classList.remove("inactive");
+
+        } else {
+          button.selected = true;
+          img.classList.add("inactive");
+        }
+
+        self._mapController.toggleBoundaryVisible(!self._mapController.isBoundaryVisible());
+      });
+
+      return button;
+    }
+
+    buildMaskButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/view-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
+      //img.classList.add("inactive");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      //button.classList.add("disabled");
+      button.type = "button";
+      button.title = "Mask";
+      button.selected = false;
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+        if (button.selected) {
+          button.selected = false;
+          img.classList.remove("inactive");
+
+        } else {
+          button.selected = true;
+          img.classList.add("inactive");
+        }
+
+        self._mapController.toggleMask(!self._mapController.isMasked());
+      });
+
+      return button;
+    }
+
     buildLabelsButton() {
 
       var self = this;
 
-      var labelsImg = document.createElement("img");
-      labelsImg.src = "img/label-icon.png";
-      labelsImg.classList.add("mapbox-custom-ctrl");
+      var img = document.createElement("img");
+      img.src = "img/view-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
 
-      var labelsButton = document.createElement("button");
-      labelsButton.classList.add("mapboxgl-ctrl-icon");
-      labelsButton.type = "button";
-      labelsButton.title = "Labels";
-      labelsButton.selected = false;
-      labelsButton.appendChild(labelsImg);
-      labelsButton.addEventListener("click", e => {
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Labels";
+      button.selected = false;
+      button.appendChild(img);
+      button.addEventListener("click", e => {
 
         console.log("labels");
 
@@ -331,26 +482,28 @@ export default class SSController {
         var ids = [];
         for (var i = 0; i < layers.length; i++) {
           if (layers[i].type === 'symbol') {
-            ids.push(layers[i].id);
+            if (layers[i].id !== "symbols-hot") {
+              ids.push(layers[i].id);
+            }
           }
         }
 
-        if (labelsButton.selected) {
-          labelsButton.selected = false;
-          labelsImg.classList.remove("inactive");
+        if (button.selected) {
+          button.selected = false;
+          img.classList.remove("inactive");
 
         } else {
-          labelsButton.selected = true;
-          labelsImg.classList.add("inactive");
+          button.selected = true;
+          img.classList.add("inactive");
         }
 
         ids.forEach(id => {
-          self._map.setLayoutProperty(id, 'visibility', labelsButton.selected ? 'none' : 'visible' );
+          self._map.setLayoutProperty(id, 'visibility', button.selected ? 'none' : 'visible' );
         });
 
       })
 
-      return labelsButton;
+      return button;
     }
 
     buildSnapshotButton() {

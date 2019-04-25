@@ -227,7 +227,8 @@ export default class MapStyleBuilder {
         },
         'paint': {
             'line-color': 'black', //#3bb2d0',
-            'line-width': 2
+            'line-dasharray': [0.1, 4],
+            'line-width': 1
         }
     },
     {
