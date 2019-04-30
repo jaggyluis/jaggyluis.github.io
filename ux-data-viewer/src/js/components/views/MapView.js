@@ -1,4 +1,4 @@
-import MapController from "./MapController.js";
+import MapController from "../controllers/MapController.js";
 
 export default class MapView {
 
@@ -19,6 +19,9 @@ export default class MapView {
         zoom: 0.1,
         preserveDrawingBuffer: true
     });
+
+    self.map.touchZoomRotate.disableRotation();
+    self.map.dragRotate.disable();
 
     // interface ---
     self.interface = document.getElementById("interface");
@@ -233,7 +236,7 @@ export default class MapView {
 
     self.controller.addSource(label, data, options);
     self.controller.addLayers(label);
-    self.controller.toggleLayers(label, false); // NOTE - init off ---
+    self.controller.toggleSource(label, false); // NOTE - init off ---
 
     var hidden = (options.properties ? options.properties.hidden || [] : []).concat("_id", "lat", "lon");
 
@@ -251,7 +254,6 @@ export default class MapView {
     var boxSubHeader = document.createElement("div");
     boxSubHeader.classList.add("box-sub-header");
     boxSubHeader.id = label + "-box-sub-header"
-
     box.appendChild(boxHeader);
     box.appendChild(boxSubHeader);
 
@@ -260,14 +262,12 @@ export default class MapView {
     boxLabel.id = label + "-box-label";
     //boxLabel.innerHTML = " - " + label; // swap for below ---
     boxLabel.innerHTML = label;
-
     boxHeader.appendChild(boxLabel);
 
     var boxStatus = document.createElement("div");
     boxStatus.classList.add("box-status");
     boxStatus.id = label + "-box-status";
     boxStatus.innerHTML = "no properties selected";
-
     boxHeader.appendChild(boxStatus);
 
     var downloadImg = document.createElement("img");
@@ -296,15 +296,24 @@ export default class MapView {
       boxHeader.appendChild(downloadButton);
     }
 
+    var boundaryImg = document.createElement("img");
+    boundaryImg.classList.add("box-menu-img");
+    boundaryImg.src = "img/boundary-icon.png";
+
+    var boundaryButton = document.createElement("div");
+    boundaryButton.classList.add("box-menu-item");
+    boundaryButton.title = "Boundaries";
+    boundaryButton.appendChild(boundaryImg);
+    boxHeader.appendChild(boundaryButton);
+
     var sheetImg = document.createElement("img");
     sheetImg.classList.add("box-menu-img");
     sheetImg.src = "img/sheet-icon.png";
 
     var sheetButton = document.createElement("div");
     sheetButton.classList.add("box-menu-item");
-    sheetButton.title = "Sheet";
+    sheetButton.title = "Features";
     sheetButton.appendChild(sheetImg);
-
     boxHeader.appendChild(sheetButton);
 
     var filterImg = document.createElement("img");
@@ -315,9 +324,8 @@ export default class MapView {
 
     var filterButton = document.createElement("div");
     filterButton.classList.add("box-menu-item");
-    filterButton.title = "Filter";
+    filterButton.title = "Properties";
     filterButton.appendChild(filterImg);
-
     boxHeader.appendChild(filterButton);
 
     var expandImg = document.createElement("img");
@@ -328,37 +336,20 @@ export default class MapView {
     expandButton.classList.add("box-menu-item");
     expandButton.title = "Expand";
     expandButton.appendChild(expandImg);
-
     boxHeader.appendChild(expandButton);
 
     var boxContent = document.createElement("div");
     boxContent.classList.add("box-content");
     boxContent.id = label + "-box-content";
-
     box.appendChild(boxContent);
 
     var boxCoords = document.createElement("div");
     boxCoords.classList.add("box-item");
     boxCoords.classList.add("box-block");
     boxCoords.id = label + "-coords";
-
     boxContent.appendChild(boxCoords);
 
     self.controller.addCoordsView(label, boxCoords);
-
-    // boxLabel.addEventListener("click", e=> { // disable ---
-    //
-    //   if (boxContent.classList.contains('collapsed')) {
-    //
-    //     boxContent.classList.remove("collapsed");
-    //     boxLabel.innerHTML = " - " + label;
-    //
-    //   } else {
-    //
-    //     boxContent.classList.add("collapsed");
-    //     boxLabel.innerHTML = " + " + label;
-    //   }
-    // });
 
     var boxSheet = document.createElement("div");
     boxSheet.classList.add("box-item");
@@ -368,6 +359,42 @@ export default class MapView {
     boxContent.appendChild(boxSheet);
 
     self.controller.addSheetView(label, boxSheet);
+
+    var boxBoundaries = document.createElement("div");
+    boxBoundaries.classList.add("box-item");
+    boxBoundaries.classList.add("box-overflow");
+    boxBoundaries.classList.add("collapsed");
+    boxBoundaries.id = label + "-boundaries";
+    boxContent.appendChild(boxBoundaries);
+
+    self.controller.addBoundaryView(label, boxBoundaries);
+
+    boundaryButton.addEventListener("click", e => {
+
+      if (boxBoundaries.classList.contains('collapsed') && !expandImg.classList.contains("selected")) {
+
+        boxBoundaries.classList.remove("collapsed");
+        self.topDiv.classList.remove("collapsed");
+        self.bottom.classList.remove("expanded");
+
+        if (!boxCoords.classList.contains("collapsed")) {
+          boxCoords.classList.add("collapsed");
+        }
+
+        if (!boxSheet.classList.contains("collapsed")) {
+          boxSheet.classList.add("collapsed");
+        }
+
+        if (!boundaryImg.classList.contains("selected")) {
+          boundaryImg.classList.add("selected");
+        }
+
+        filterImg.classList.remove("selected");
+        sheetImg.classList.remove("selected");
+        expandImg.classList.remove("selected");
+
+      }
+    });
 
     sheetButton.addEventListener("click", e => {
 
@@ -381,12 +408,18 @@ export default class MapView {
           boxCoords.classList.add("collapsed");
         }
 
+        if (!boxBoundaries.classList.contains("collapsed")) {
+          boxBoundaries.classList.add("collapsed");
+        }
+
         if (!sheetImg.classList.contains("selected")) {
           sheetImg.classList.add("selected");
         }
 
         filterImg.classList.remove("selected");
         expandImg.classList.remove("selected");
+        boundaryImg.classList.remove("selected");
+
       }
     });
 
@@ -402,12 +435,17 @@ export default class MapView {
           boxSheet.classList.add("collapsed");
         }
 
+        if (!boxBoundaries.classList.contains("collapsed")) {
+          boxBoundaries.classList.add("collapsed");
+        }
+
         if (!filterImg.classList.contains("selected")) {
           filterImg.classList.add("selected");
         }
 
         sheetImg.classList.remove("selected");
         expandImg.classList.remove("selected");
+        boundaryImg.classList.remove("selected");
       }
     });
 
@@ -434,6 +472,10 @@ export default class MapView {
         boxCoords.classList.remove("collapsed");
         boxSheet.classList.remove("collapsed");
 
+        if (!boxBoundaries.classList.contains("collapsed")) {
+          boxBoundaries.classList.add("collapsed");
+        }
+
         filterImg.classList.remove("selected");
         if (!filterImg.classList.contains("disabled")) {
           filterImg.classList.add("disabled");
@@ -444,18 +486,30 @@ export default class MapView {
           sheetImg.classList.add("disabled");
         }
 
+        boundaryImg.classList.remove("selected");
+        if (!boundaryImg.classList.contains("disabled")) {
+          boundaryImg.classList.add("disabled");
+        }
+
       } else {
 
         self.topDiv.classList.remove("collapsed");
         self.bottom.classList.remove("expanded");
+
         expandImg.classList.remove("selected");
         boxContent.classList.remove("expanded");
 
-        boxSheet.classList.add("collapsed");
-        filterImg.classList.add("selected");
+        if (!boxSheet.classList.contains("collapsed")) {
+          boxSheet.classList.add("collapsed");
+        }
+
+        if (!filterImg.classList.contains("selected")) {
+          filterImg.classList.add("selected");
+        }
 
         filterImg.classList.remove("disabled");
         sheetImg.classList.remove("disabled");
+        boundaryImg.classList.remove("disabled");
       }
     });
 
@@ -497,12 +551,12 @@ export default class MapView {
     var docViewImg = document.createElement("img");
     docViewImg.classList.add("document-menu-img");
     //docViewImg.classList.add("selected");
-    docViewImg.src = "img/view-icon.png";
+    docViewImg.src = "img/pointer-icon.png";
 
     var docViewButton = document.createElement("div");
     docViewButton.classList.add("document-menu-item");
     docViewButton.classList.add("document-view-button");
-    docViewButton.title = "View";
+    docViewButton.title = "Active";
     docViewButton.selected = false;
     docViewButton.appendChild(docViewImg);
 
@@ -510,8 +564,8 @@ export default class MapView {
 
     var docFilterImg = document.createElement("img");
     docFilterImg.classList.add("document-menu-img");
-    docFilterImg.style = " transform: rotate(90deg); ";
-    docFilterImg.src = "img/options-icon.png";
+    //docFilterImg.style = " transform: rotate(90deg); ";
+    docFilterImg.src = "img/filter2-icon.png";
 
     var docFilterButton = document.createElement("div");
     docFilterButton.classList.add("document-menu-item");
@@ -521,66 +575,6 @@ export default class MapView {
     docFilterButton.appendChild(docFilterImg);
 
     docHeader.appendChild(docFilterButton);
-
-    var docMoveDownImg = document.createElement("img");
-    docMoveDownImg.classList.add("document-menu-img");
-    //docViewImg.classList.add("selected");
-    docMoveDownImg.style = " transform: rotate(90deg); ";
-    docMoveDownImg.src = "img/left-arrow-icon.png";
-
-    var docMoveDownButton = document.createElement("div");
-    docMoveDownButton.classList.add("document-menu-item");
-    docMoveDownButton.classList.add("document-order-button");
-    docMoveDownButton.title = "Move Layer Down";
-    docMoveDownButton.selected = false;
-    docMoveDownButton.appendChild(docMoveDownImg);
-
-    docMoveDownButton.addEventListener("click", e => {
-
-      var nodes = Array.prototype.slice.call(self.lscroll.children );
-      var index = nodes.indexOf(doc);
-
-      if (index == -1 || index == 0) {
-        return;
-      }
-
-      self.controller.moveSourceDown(label);
-
-      self.lscroll.insertBefore(doc, self.lscroll.children[index -1]);
-
-    });
-
-    docHeader.appendChild(docMoveDownButton);
-
-    var docMoveUpImg = document.createElement("img");
-    docMoveUpImg.classList.add("document-menu-img");
-    //docViewImg.classList.add("selected");
-    docMoveUpImg.style = " transform: rotate(90deg); ";
-    docMoveUpImg.src = "img/right-arrow-icon.png";
-
-    var docMoveUpButton = document.createElement("div");
-    docMoveUpButton.classList.add("document-menu-item");
-    docMoveUpButton.classList.add("document-order-button");
-    docMoveUpButton.title = "Move Layer Up";
-    docMoveUpButton.selected = false;
-    docMoveUpButton.appendChild(docMoveUpImg);
-
-    docMoveUpButton.addEventListener("click", e => {
-
-      var nodes = Array.prototype.slice.call(self.lscroll.children );
-      var index = nodes.indexOf(doc);
-
-      if (index == -1 || index == nodes.length -1) {
-        return;
-      }
-
-      self.controller.moveSourceUp(label);
-
-      self.lscroll.insertBefore(doc, self.lscroll.children[index + 2]);
-
-    });
-
-    docHeader.appendChild(docMoveUpButton);
 
     var docContent = document.createElement("div");
     docContent.classList.add("document-content");
@@ -608,6 +602,7 @@ export default class MapView {
 
     docLabel.addEventListener("click", e=> { // disable ---
 
+      var collapsed = docContent.classList.contains("collapsed");
       var content = document.getElementsByClassName("document-content");
 
       for (var i = 0; i<content.length; i++) {
@@ -616,7 +611,9 @@ export default class MapView {
         }
       }
 
-      docContent.classList.remove("collapsed");
+      if (collapsed) {
+        docContent.classList.remove("collapsed");
+      }
 
     });
 
@@ -627,14 +624,14 @@ export default class MapView {
           docViewButton.selected = false;
 
           docViewImg.classList.remove("selected");
-          self.controller.toggleLayers(label, false);
+          self.controller.toggleSource(label, false);
 
         } else {
 
           docViewButton.selected = true;
 
           docViewImg.classList.add("selected");
-          self.controller.toggleLayers(label, true); // move this to new button ---
+          self.controller.toggleSource(label, true); // move this to new button ---
         }
     });
 
@@ -644,7 +641,7 @@ export default class MapView {
 
         for (var i = 0; i < filterButtons.length; i++) {
           if ( filterButtons[i].selected && filterButtons[i] !== docFilterButton) {
-             filterButtons[i].click();
+             filterButtons[i].click({target : null });
           }
         }
 
@@ -662,6 +659,11 @@ export default class MapView {
           docFilterImg.classList.add("selected");
           box.classList.remove("collapsed");
         }
+
+        if (e.target !== null) {
+          self.controller.toggleActiveSource(label);
+        }
+
     });
 
     if (options.visible === true) {
@@ -698,7 +700,7 @@ export default class MapView {
 
       propertyLabel.addEventListener("click", (e) => {
         propertyCheckBox.click(e);
-      })
+      });
 
       propertyHeader.appendChild(propertyCheckBox);
       propertyHeader.appendChild(propertyLabel);
@@ -803,6 +805,10 @@ export default class MapView {
           categoryLabel.classList.add("document-item-label");
           categoryLabel.classList.add("selected");
 
+          categoryLabel.addEventListener("click", (e) => {
+            categoryCheckBox.click(e);
+          })
+
           categoryHeader.appendChild(categoryCheckBox);
           categoryHeader.appendChild(categoryLabel);
           propertyContent.appendChild(categoryHeader);
@@ -892,57 +898,4 @@ function areFiltersPresent() {
   }
 
   return false;
-}
-
-function dropFile(dropZoneElement, fileExtensionFilters, cb) {
-
-  if (window.File && window.FileReader && window.FileList && window.Blob) {
-    // Great success!
-    function handleJSONDrop(evt) {
-      evt.stopPropagation();
-      evt.preventDefault();
-      var files = evt.dataTransfer.files;
-        // Loop through the FileList and read
-        for (var i = 0, f; f = files[i]; i++) {
-
-          var ext = f.name.split('.').pop();
-
-          // Only process extension files.
-          if (!(fileExtensionFilters.includes(ext))) {
-
-            console.log("file not in extensions")
-
-            continue;
-          }
-
-          var reader = new FileReader();
-
-          // Closure to capture the file information.
-          reader.onload = (function(theFile) {
-
-            return function(e) {
-              cb(e.target.result, theFile.name); // NOTE - this is where the event is called ---
-
-            };
-
-          })(f);
-
-          reader.readAsText(f);
-        }
-    }
-
-    function handleDragOver(evt) {
-      evt.stopPropagation();
-      evt.preventDefault();
-      evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-    }
-
-    // Setup the dnd listeners.
-    var dropZone = dropZoneElement;
-    dropZone.addEventListener('dragover', handleDragOver, false);
-    dropZone.addEventListener('drop', handleJSONDrop, false);
-
-  } else {
-    alert('The File APIs are not fully supported in this browser.');
-  }
 }

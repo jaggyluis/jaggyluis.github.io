@@ -1,0 +1,56 @@
+{
+  "title": "UX.View",
+  "type": "SSDataSchema",
+  "options": {
+    "draw": true,
+    "data": true,
+    "filter": true,
+    "download": true,
+    "labels": true,
+    "export": true,
+    "active": "buildings_pr_1mil",
+    "camera": "camera_aguy07",
+    "mask": true,
+    "boundary": true,
+    "extrude": true
+  },
+  "cameras": [{
+    "center": [151.17556879897734, -33.87135572669143],
+    "zoom": 14.309681466016663,
+    "bearing": 8,
+    "pitch": 39.00000000000001,
+    "plan": false,
+    "id": "camera_aguy07"
+  }],
+  "boundaries": [],
+  "schemas": [{
+    "id": "buildings_pr_1mil",
+    "url": "data/syd/gansw/buildings_pr_1mil.geojson",
+    "options": {
+      "visible": true,
+      "include": true,
+      "legend": true,
+      "index": 0,
+      "height": "height_m",
+      "base": "default_null",
+      "active": "shape_area",
+      "properties": {
+        "filtered": ["_dist__site", "_id", "dwelling", "gfa", "height_m", "kept", "lat", "lon", "misc", "org_id", "population", "recreati_1", "shape_area", "shape_perimeter", "site__intersects", "total_com", "total_othe", "total_resi", "zone_aut_n"],
+        "hidden": ["_dist__site", "_id", "gfa", "kept", "lat", "lon", "misc", "org_id", "recreati_1", "shape_perimeter", "site__intersects", "total_com", "total_othe", "total_resi", "zone_aut_n"],
+        "selected": ["dwelling", "height_m", "population", "shape_area"]
+      },
+      "style": [{
+        "property": "shape_area",
+        "color": "PuRd",
+        "reverse": true
+      }],
+      "features": {
+        "selected": []
+      },
+      "boundary": {
+        "xor": false,
+        "filtered": ["draw"]
+      }
+    }
+  }]
+}

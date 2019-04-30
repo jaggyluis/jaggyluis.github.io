@@ -28,12 +28,13 @@
 
     <!--  deck -->
     <script src="https://unpkg.com/deck.gl@~6.2.0/deckgl.min.js"></script>
-    <!-- <script src="https://unpkg.com/deck.gl@~5.2.0/deckgl.min.js"></script>
+    <!-- <script src="https://unpkg.com/deck.gl@~5.2.0/deckgl.min.js"></script> -->
 
-    <!--  numeral -->
+    <!-- numeral -->
     <script src="js/lib/numeral.min.js"></script>
 
     <!-- utils -->
+    <script src="js/utils/dropFile.js"></script>
     <script src='js/utils/html2canvas.min.js'></script>
     <script src="js/utils/csvDownload.js"></script>
     <script src="js/utils/fileSaver.js"></script>
@@ -50,15 +51,20 @@
   <body>
 
     <!-- App -->
-    <script src="js/components/RadiusMode.js" type="module"></script>
-    <script src="js/components/MapView.js" type="module"></script>
-    <script src="js/components/MapStyleBuilder.js" type="module"></script>
-    <script src="js/components/MapController.js" type="module"></script>
-    <script src="js/components/SSController.js" type="module"></script>
+    <script src="js/components/modes/RadiusMode.js" type="module"></script>
+    <script src="js/components/modes/StaticMode.js" type="module"></script>
+
+    <script src="js/components/views/MapView.js" type="module"></script>
+    <script src="js/components/views/ControlView.js" type="module"></script>
+    <script src="js/components/views/SheetView.js"></script>
+    <script src="js/components/views/BoundaryView.js"></script>
+
+    <script src="js/components/styles/MapStyleBuilder.js" type="module"></script>
+    <script src="js/components/controllers/MapController.js" type="module"></script>
 
     <script async type="module">
 
-      import MapView from "./js/components/MapView.js";
+      import MapView from "./js/components/views/MapView.js";
 
       (() => {
 

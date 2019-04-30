@@ -1,5 +1,4 @@
-// http://bl.ocks.org/3687826
-d3.divgrid = function(source, config) {
+var SheetView = function(source, config) {
 
   var __ = {
     config : config,
@@ -468,6 +467,11 @@ d3.divgrid = function(source, config) {
 
     div.appendChild(highlight);
 
+    var content = document.createElement("div");
+    content.classList.add("row-content");
+
+    div.appendChild(content);
+
     __.highlight.push(highlight);
 
     // data ---
@@ -487,12 +491,12 @@ d3.divgrid = function(source, config) {
         __.divider = document.createElement("div");
         __.divider.innerHTML = "... " + (__.data.length - count) + " more elements";
         __.divider.style = "border-bottom : 1px solid grey; margin-top : 8px; margin-bottom: 8px; font-size : 8px; ";
-        div.appendChild(__.divider);
+        content.appendChild(__.divider);
       }
 
       var r = dg.buildRow(d, i);
 
-      div.appendChild(r.row);
+      content.appendChild(r.row);
 
       r.row.addEventListener("click", e => {
 
@@ -539,10 +543,10 @@ d3.divgrid = function(source, config) {
       __.divider.innerHTML = "... " + (__.data.length - count) + " more elements";
       __.divider.style = "border-bottom : 1px solid grey; margin-top : 8px; margin-bottom: 8px; font-size : 8px; ";
       __.divider.style.visibility = "none";
-      div.appendChild(__.divider);
+      content.appendChild(__.divider);
     }
 
-    div.scrollTop = 0;
+    content.scrollTop = 0;
 
     return this;
   }

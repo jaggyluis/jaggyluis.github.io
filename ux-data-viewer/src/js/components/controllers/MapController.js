@@ -1,7 +1,9 @@
-import MapStyleBuilder from "./MapStyleBuilder.js";
-import SSController from "./SSController.js";
+import ControlView from "../views/ControlView.js";
 
-import RadiusMode from "./RadiusMode.js";
+import RadiusMode from "../modes/RadiusMode.js";
+import StaticMode from "../modes/StaticMode.js";
+
+import MapStyleBuilder from "../styles/MapStyleBuilder.js";
 
 const { MapboxLayer } = deck;
 
@@ -20,11 +22,23 @@ export default class MapController {
     this.envelope = [];
     this.styleBuilder = new MapStyleBuilder();
     this.options = {
-      draw : options && options.draw === false ? false : true,
+      draw : true,
+      data : true,
+      filter : true,
+      download : true,
+      labels : true,
+      export : true,
+      active : null,
       camera : "default",
       mask : true,
       boundary: true,
+      extrude: false,
     };
+
+    options = options || {}; // init options ---
+    Object.keys(options).forEach(option => {
+      this.options[option] = options[option];
+    })
 
     // older browsers
     if (!('remove' in Element.prototype)) {
@@ -89,49 +103,9 @@ export default class MapController {
 
     });
 
-    // document.addEventListener('contextmenu', event => { // NOTE - this will disable all context menu on the page during loading - might be a bad idea
-    //
-    //   if (self.loading) {
-    //     event.preventDefault();
-    //   }
-    //
-    // });
-
-    var StaticMode = {};
-
-    // When the mode starts this function will be called.
-    // The `opts` argument comes from `draw.changeMode('lotsofpoints', {count:7})`.
-    // The value returned should be an object and will be passed to all other lifecycle functions
-    StaticMode.onSetup = function(opts) {
-      // var state = {};
-      // state.count = opts.count || 0;
-      // return state;
-      this.setActionableState(); // default actionable state is false for all actions
-      return {};
-    };
-
-    // Whenever a user clicks on the map, Draw will call `onClick`
-    StaticMode.onClick = function(state, e) {
-      // do nothing
-    };
-
-    // Whenever a user clicks on a key while focused on the map, it will be sent here
-    StaticMode.onKeyUp = function(state, e) {
-      // if (e.keyCode === 27) return this.changeMode('simple_select');
-      // do nothing
-    };
-
-    // This is the only required function for a mode.
-    // It decides which features currently in Draw's data store will be rendered on the map.
-    // All features passed to `display` will be rendered, so you can pass multiple display features per internal feature.
-    // See `styling-draw` in `API.md` for advice on making display features
-    StaticMode.toDisplayFeatures = function(state, geojson, display) {
-      display(geojson);
-    };
-
     var modes = MapboxDraw.modes;
 
-    if (options && options.draw === false) { // override all draw functionality with static ---
+    if (self.options.draw === false) { // override all draw functionality with static ---
       Object.keys(modes).forEach(mode => {
         modes[mode] = StaticMode;
       })
@@ -141,8 +115,8 @@ export default class MapController {
       displayControlsDefault: false,
       defaultMode: 'static',
       controls: {
-        polygon: options && options.draw === false ? false : true,
-        trash: options && options.draw === false ? false : true
+        polygon: self.options.draw === false ? false : true,
+        trash: self.options.draw === false ? false : true
       },
       styles : self.styleBuilder.buildMapBoxDrawLayerStyle(),
       modes: Object.assign({
@@ -157,8 +131,7 @@ export default class MapController {
     //map.addControl(new mapboxgl.NavigationControl({  showZoom: false, }));
     //map.addControl(new mapboxgl.ScaleControl());
 
-    var controls = new SSController(options);
-    controls.setMapController(self);
+    var controls = new ControlView(self);
     self.controls = controls;
 
     map.addControl(controls);
@@ -235,7 +208,7 @@ export default class MapController {
 
     });
 
-    if (options.draw !== false) {
+    if (self.options.draw !== false) {
 
       var drawControl = document.getElementsByClassName("mapbox-gl-draw_ctrl-draw-btn")[0].parentNode;
 
@@ -329,8 +302,181 @@ export default class MapController {
         }
     }, "gl-draw-polygon-fill-inactive.cold");
 
+    self.toggleLabelsVisible(self.options.labels);
+    self.toggleMask(self.options.mask);
+    self.toggleBoundaryVisible(self.options.boundary);
+
     //console.log(self.map.style.sourceCaches);
     //console.log(map.getStyle().layers);
+  }
+
+  buildSchema() {
+
+    var self = this;
+
+    return {
+
+      title : "UX.View",
+
+      type : "SSDataSchema",
+
+      options : self.options,
+
+      cameras : Object.keys(self.cameras).map(key => self.cameras[key]),
+
+      boundaries : [],
+
+      schemas : Object.keys(self.sources).map(key => {
+
+        var source = self.sources[key];
+        var options = source.options;
+
+        // mandatory params ---
+        options.visible = source.visible;
+        options.include = source.include;
+        options.interactive = source.interactive;
+        options.legend = source.legend;
+        options.index = source.index;
+
+        // optional params ---
+        if (source.base) options.base = source.base;
+        if (source.height) options.height = source.height;
+
+        if (source.base && !source.height) options.height = "default_null"; // NOTE - this will produce a height if exists ---
+        if (source.height && !source.base)  options.base = "default_null"; // NOTE - this will produce a height if exists ---
+
+        if (source.active) options.active = source.active;
+
+        // properties ---
+        var properties = {
+
+          filtered : options.properties && options.properties.filtered
+            ? options.properties.filtered
+            : self.getProperties(key),
+
+          hidden : options.properties && options.properties.hidden
+            ? options.properties.hidden
+            : self.getProperties(key, false, true),
+
+          selected : options.properties && options.properties.selected
+            ? options.properties.selected
+            : self.getProperties(key, true, false),
+        };
+
+        // features ---
+        var features = {
+
+          selected : options.features && options.features.selected
+            ? options.features.selected
+            : source.selected.map(feature => feature.id)
+        };
+
+        // boundaries ---
+        var boundary = {
+
+          xor : options.boundary && options.boundary.xor
+            ? true
+            : false,
+
+          filtered : options.boundary && options.boundary.filtered
+            ? options.boundary.filtered
+            : ["draw"],
+        };
+
+        // style ---
+        var style = [];
+
+        properties.filtered.forEach(property => {
+          var lock = false;
+          var pstyle = {
+            property : property
+          }
+
+          if (source.states[property].propertyStyleKey !== null) {
+            pstyle.color = source.states[property].propertyStyleKey;
+            lock = true;
+          }
+
+          if (source.states[property].propertyReversed === true) {
+            pstyle.reverse = true;
+            lock = true;
+          }
+
+          if (lock) {
+            style.push(pstyle);
+          }
+
+        });
+
+        options.properties = properties;
+        options.features = features;
+        options.boundary = boundary;
+        options.style = style;
+
+        return {
+
+          id : source.source,
+
+          url : null,
+
+          options : options
+        };
+
+      })
+    }
+  }
+
+  isExtruded() {
+    return this.options.extrude;
+  }
+
+  toggleExtruded(extruded) {
+    this.options.extrude = extruded;
+
+    var self = this;
+
+    if (this.options.extrude) {
+
+      self.map.setPitch(30);
+      self.map.touchZoomRotate.enableRotation();
+      self.map.dragRotate.enable();
+
+    } else {
+
+      self.map.setPitch(0);
+      self.map.setBearing(0);
+      self.map.touchZoomRotate.disableRotation();
+      self.map.dragRotate.disable();
+    }
+
+    Object.keys(this.sources).forEach(key => {
+
+      var source = this.sources[key];
+      var propertyLayerId = source.layers.property;
+
+      if (!propertyLayerId) {
+        return;
+      }
+
+      if (source.types.includes("Polygon") || source.types.includes("MultiPolygon")) {
+
+        if (!this.options.extrude) {
+
+          console.log("make flat");
+          self.map.setPaintProperty(propertyLayerId, "fill-extrusion-height", 0);
+          self.map.setPaintProperty(propertyLayerId, "fill-extrusion-base", 0);
+
+        } else {
+
+          console.log("make extruded");
+          self.map.setPaintProperty(propertyLayerId, "fill-extrusion-height", ["get", source.height]);
+          self.map.setPaintProperty(propertyLayerId, "fill-extrusion-base", ["get", source.base]);
+        }
+
+      }
+    });
+
+    this.controls.fire("toggle");
   }
 
   toggleBoundaryVisible(boundary) {
@@ -344,6 +490,8 @@ export default class MapController {
     layers.forEach(l => {
       this.map.setLayoutProperty(l.id, 'visibility', visibility);
     })
+
+    this.controls.fire("layers");
   }
 
   isBoundaryVisible() {
@@ -356,10 +504,38 @@ export default class MapController {
     if (this.draw.getMode() === "static") {
       this.map.fire("draw.modechange", { mode: "static"}); // update the draw ---
     }
+
+    this.controls.fire("layers");
   }
 
   isMasked() {
     return this.options.mask;
+  }
+
+  toggleLabelsVisible(visible) {
+    this.options.labels = visible;
+
+    var self = this;
+    var layers = self.map.getStyle().layers;
+
+    var ids = [];
+    for (var i = 0; i < layers.length; i++) {
+      if (layers[i].type === 'symbol') {
+        if (layers[i].id !== "symbols-hot") {
+          ids.push(layers[i].id);
+        }
+      }
+    }
+
+    ids.forEach(id => {
+      self.map.setLayoutProperty(id, 'visibility', !self.options.labels ? 'none' : 'visible' );
+    });
+
+    this.controls.fire("layers");
+  }
+
+  areLabelsVisible() {
+    return this.options.labels;
   }
 
   addCamera(key, camera) {
@@ -407,12 +583,14 @@ export default class MapController {
       zoom : zoom,
       bearing : bearing,
       pitch : pitch,
-      plan : !this.controls.isExtruded()
+      plan : !this.isExtruded()
     }
 
     if (key == "default" || key == undefined || key == null) {
       key = "camera_" + generateUID();
     }
+
+    camera.id = key;
 
     if (key in this.cameras) {
       this.cameras[key] = camera;
@@ -427,26 +605,6 @@ export default class MapController {
 
     return camera;
   }
-
-  // nextCamera() {
-  //
-  //   var self = this;
-  //
-  //   var cameras = Object.keys(self.cameras);
-  //   var camera = self.options.camera;
-  //   var currIndex = cameras.indexOf(camera);
-  //   var nexIndex = currIndex + 1;
-  //
-  //   if (nexIndex >= cameras.length) {
-  //     nexIndex = 0;
-  //   }
-  //
-  //   if (self.cameras[cameras[nexIndex]]) {
-  //     self.toggleCamera(cameras[nexIndex], true);
-  //   }
-  //
-  //   this.controls.fire("camera");
-  // }
 
   nextCamera() {
 
@@ -488,20 +646,20 @@ export default class MapController {
 
       if (self.cameras[key].plan === true) {
 
-        if (self.controls.isExtruded()) {
-          self.controls.fire("toggle");
+        if (self.isExtruded()) {
+          self.toggleExtruded(!self.isExtruded());
         }
 
       } else if (self.cameras[key].plan === false) {
 
-        if (!self.controls.isExtruded()) {
-          self.controls.fire("toggle");
+        if (!self.isExtruded()) {
+          self.toggleExtruded(!self.isExtruded());
         }
 
       } else {
 
-        if (!self.controls.isExtruded()) {
-          self.controls.fire("toggle");
+        if (!self.isExtruded()) {
+          self.toggleExtruded(!self.isExtruded());
         }
       }
 
@@ -563,6 +721,7 @@ export default class MapController {
     if (data.type === 'FeatureCollection') {
 
       data.features.forEach((f,i) => {
+        f.id = i;
         f.properties._id = i;
         f.properties._kd = key;
       });
@@ -650,6 +809,7 @@ export default class MapController {
         propertyInterval : propertyInterval,
         propertyRange : propertyRange,
         propertyStyle : propertyStyle,
+        propertyStyleKey : null,
         propertyReversed : propertyOptions ? propertyOptions.reverse || false : false,
       };
 
@@ -663,20 +823,25 @@ export default class MapController {
     var self = this;
 
     self.sources[key] = wrangle(data, options);
-    self.sources[key].index = Object.keys(self.sources).length -1;
+    self.sources[key].index = Object.keys(self.sources).length -1; /// TODO - match options and sort
     self.sources[key].source = key;
     self.sources[key].states = {};
+    self.sources[key].interactive = self.sources[key].options.interactive === false ? false : true;
     self.sources[key].active = self.sources[key].options.active || null;
     self.sources[key].height = self.sources[key].options.height || "";
     self.sources[key].base = self.sources[key].options.base || "";
-    self.sources[key].mapped = [];
-    self.sources[key].visible = true;
-    self.sources[key].legend = true;
+    self.sources[key].visible = self.sources[key].options.visible === false ? false : true;
+    self.sources[key].include = self.sources[key].options.include === false ? false : true;
+    self.sources[key].legend = self.sources[key].options.legend === false ? false : true;
     self.sources[key].xor = self.sources[key].options.boundary ? self.sources[key].options.boundary.xor || false : false;
     self.sources[key].boundaries = self.sources[key].options.boundary ? self.sources[key].options.boundary.filtered || null : null;
+    self.sources[key].mapped = [];
     self.sources[key].brushed = [];
+
     self.sources[key].coords = null;
     self.sources[key].grid = null;
+    self.sources[key].boundary = null;
+
     self.sources[key].filtered = ["in", "_id"];
     self.sources[key].hovered =  null;
     self.sources[key].hidden = [];
@@ -841,6 +1006,27 @@ export default class MapController {
     console.log("call to add source took " + (t1 - t0) + " milliseconds.");
   }
 
+  toggleActiveSource(key) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    if (self.options.active === key) {
+
+      self.options.active = null;
+
+    } else {
+
+      self.options.active = key;
+    }
+
+    console.log(self.options.active);
+  }
+
   moveSourceUp(key) {
 
     var self = this;
@@ -902,7 +1088,7 @@ export default class MapController {
     prevSource.index += 1;
     source.index -= 1;
 
-    // console.log(Object.keys(self.sources).map(s => s + " : " + self.sources[s].index));
+    self.updateLegend();
   }
 
   getSourceKeys() {
@@ -964,6 +1150,21 @@ export default class MapController {
     return source.states[property];
   }
 
+  toggleSource(key, active) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null) {
+      return;
+    }
+
+    source.include = active;
+
+    self.toggleLayers(key, source.include);
+    self.updateLegend();
+  }
+
   addLayers(key) {
 
     this.addInteractionLayer(key); // NOTE - swap this maybe?
@@ -993,8 +1194,6 @@ export default class MapController {
     });
 
     source.visible = visible;
-
-    self.updateLegend();
   }
 
   updateWireFrameLayer(key) {
@@ -1233,7 +1432,7 @@ export default class MapController {
       case "Polygon":
       case "MultiPolygon":
 
-        var layer =  self.styleBuilder.buildGeoJsonPolygonPropertyLayer(source, !self.controls.isExtruded());
+        var layer =  self.styleBuilder.buildGeoJsonPolygonPropertyLayer(source, !self.isExtruded());
         var id = layer.id;
 
         self.sources[key].layers.property.push(id);
@@ -1263,7 +1462,6 @@ export default class MapController {
         self.sources[key].layers.property.push(id);
 
         self.map.addLayer( layer, firstSymbolId );
-        self.map.moveLayer( layer.id ); // point always on top ---
 
         break;
 
@@ -1273,7 +1471,7 @@ export default class MapController {
 
     // --- highlight
 
-    if (self.sources[key].options.interactive === false) {
+    if (self.sources[key].interactive === false) {
       return;
     }
 
@@ -1589,7 +1787,7 @@ export default class MapController {
       });
 
       var popup = new mapboxgl.Popup({
-        closeButton: source.options.interactive === false ? false : true,
+        closeButton: source.interactive === false ? false : true,
         closeOnClick: false
       });
 
@@ -1810,6 +2008,39 @@ export default class MapController {
     }
   }
 
+  addBoundaryView(key, element) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null || source.coords === null) {
+      return;
+    }
+
+    source.boundary = BoundaryView(source, self)(element);
+
+    self.updateBoundaryView(key);
+
+    return source.boundary;
+  }
+
+  updateBoundaryView(key) {
+
+    var self = this;
+    var source = self.sources[key];
+
+    if (source === undefined || source === null || source.grid === null) {
+      return;
+    }
+
+    var data = Object.keys(self.sources).map(d => { return  {id : d, value : "test"}; });
+
+    source.boundary.data(data)
+      .columns(["test", "test"])
+      .render();
+
+  }
+
   addSheetView(key, element) {
 
     var self = this;
@@ -1819,7 +2050,7 @@ export default class MapController {
       return;
     }
 
-    source.grid = d3.divgrid(source, self)(element)
+    source.grid = SheetView(source, self)(element);
 
     self.updateSheetView(key);
 
@@ -1838,7 +2069,7 @@ export default class MapController {
     var properties = self.getProperties(key, true, false);
     //properties.splice(0,0, "_id");
 
-    var data = source.brushed.length === 0 || source.bru ? source.coords.data() : source.brushed;
+    var data = source.brushed.length === 0 ? source.coords.data() : source.brushed;
 
     source.grid.data(data)
       .columns(properties)
@@ -2675,6 +2906,7 @@ export default class MapController {
         colorRangeBox.addEventListener("click", e => {
 
           state.propertyStyle = colorRange;
+          state.propertyStyleKey = styleKey;
 
           var active = source.active;
           var extents = source.coords.brushExtents();
@@ -2852,6 +3084,8 @@ export default class MapController {
 
   updateClusterLayer(key, property) {
 
+    return; // XXXXX shut off for now ---
+
     var self = this;
     var source = self.sources[key];
 
@@ -3015,13 +3249,13 @@ export default class MapController {
           paintProperties.push({
             id : id,
             type :"fill-extrusion-height",
-            paint : !self.controls.isExtruded() ? 0 : ["get", source.height],
+            paint : !self.isExtruded() ? 0 : ["get", source.height],
           })
 
           paintProperties.push({
             id : id,
             type :"fill-extrusion-base",
-            paint : !self.controls.isExtruded() ? 0 : ["get", source.base],
+            paint : !self.isExtruded() ? 0 : ["get", source.base],
           })
 
         });
@@ -3696,137 +3930,228 @@ export default class MapController {
 
     var count = 0;
 
-    Object.keys(self.sources).forEach(s => {
+    var sources = Object.keys(self.sources).filter(key => self.sources[key].include && self.sources[key].interactive);
+    sources.sort((a,b) => self.sources[b].index - self.sources[a].index);
+
+    sources.forEach(s => {
 
         var source = self.sources[s];
+        var legend = self.legend;
 
-        if (source.visible) {
+        var readout = document.createElement("div");
+        readout.classList.add("legend-div");
 
-          var legend = self.legend;
+        var header = document.createElement("div");
+        header.classList.add("legend-header");
+        header.classList.add("selected");
 
-          var readout = document.createElement("div");
-          readout.classList.add("legend-div");
+        var content = document.createElement("div");
+        content.classList.add("legend-content");
 
-          var header = document.createElement("div");
-          header.classList.add("legend-header");
-          header.classList.add("selected");
+        var indicator = document.createElement("div");
+        indicator.classList.add("legend-indicator");
+        indicator.classList.add("mapboxgl-popup-tip");
 
-          var content = document.createElement("div");
-          content.classList.add("legend-content");
+        var hkey = document.createElement("div");
+        hkey.classList.add("legend-header-key");
+        hkey.innerHTML = s;
+        hkey.title = "Hide Legend"
 
-          var indicator = document.createElement("div");
-          indicator.classList.add("legend-indicator");
-          indicator.classList.add("mapboxgl-popup-tip");
+        var hsel = document.createElement("div");
 
-          var hkey = document.createElement("div");
-          hkey.classList.add("legend-header-key");
-          hkey.innerHTML = s;
-          hkey.title = "Hide Legend"
+        var hprop = document.createElement("div");
+        hprop.classList.add("legend-header-property");
+        hprop.classList.add("legend-header-option")
+        hprop.title = "Active Property"
+        hprop.innerHTML = source.active || "no active property";
+        hsel.appendChild(hprop);
 
-          var hsel = document.createElement("div");
+        // var hprop = document.createElement("select");
+        // hprop.classList.add("legend-header-option");
+        // hprop.innerHTML = source.active;
 
-          var hprop = document.createElement("div");
-          hprop.classList.add("legend-header-property");
-          hprop.classList.add("legend-header-option")
-          hprop.title = "Active Property"
-          hprop.innerHTML = source.active || "no active property";
-          hsel.appendChild(hprop);
+        var hdrop = document.createElement("div");
+        hdrop.classList.add("legend-header-dropdown");
+        hdrop.classList.add("collapsed");
+        hsel.appendChild(hdrop);
 
-          // var hprop = document.createElement("select");
-          // hprop.classList.add("legend-header-option");
-          // hprop.innerHTML = source.active;
+        var hdropIndicator = document.createElement("div");
+        hdropIndicator.classList.add("legend-indicator");
+        hdropIndicator.classList.add("mapboxgl-popup-tip");
 
-          var hdrop = document.createElement("div");
-          hdrop.classList.add("legend-header-dropdown");
-          hdrop.classList.add("collapsed");
-          hsel.appendChild(hdrop);
+        var props = self.getProperties(source.source, true, false);
+        props.forEach(p => {
 
-          var hdropIndicator = document.createElement("div");
-          hdropIndicator.classList.add("legend-indicator");
-          hdropIndicator.classList.add("mapboxgl-popup-tip");
+          var hopt = document.createElement("div");
+          hopt.classList.add("legend-header-property");
+          hopt.classList.add("legend-header-option");
+          hopt.innerHTML = p;
+          hopt.value = p;
 
-          var props = self.getProperties(source.source, true, false);
-          props.forEach(p => {
-
-            var hopt = document.createElement("div");
-            hopt.classList.add("legend-header-property");
-            hopt.classList.add("legend-header-option")
-            hopt.innerHTML = p;
-            hopt.value = p;
-
-            if (p === source.active) {
-              hopt.classList.add("active");
-            }
-
-            hopt.addEventListener("click", () => {
-              self.selectProperty(source.source, p);
-            })
-
-            hdrop.appendChild(hopt);
-          });
-
-          if (hdrop.childNodes.length) {
-            hdrop.insertBefore(hdropIndicator, hdrop.childNodes[hdrop.childNodes.length -1]);
+          if (p === source.active) {
+            hopt.classList.add("active");
           }
 
-          hprop.addEventListener("click", () => {
-            //hdrop.classList.toggle("collapsed");
+          hopt.addEventListener("click", () => {
+            self.selectProperty(source.source, p);
           })
 
-          hsel.addEventListener("mouseenter", () => {
-            hsel.enter = true;
-            hdrop.classList.remove("collapsed");
-          });
+          hdrop.appendChild(hopt);
+        });
 
-          hsel.addEventListener("mouseleave", () => {
-            hsel.enter = false;
+        if (hdrop.childNodes.length) {
+          hdrop.insertBefore(hdropIndicator, hdrop.childNodes[hdrop.childNodes.length -1]);
+        }
 
-            setTimeout(() => {
-              if (!hsel.enter) {
-                if (!hdrop.classList.contains("collapsed")) {
-                  hdrop.classList.add("collapsed");
-                }
+        hprop.addEventListener("click", () => {
+          //hdrop.classList.toggle("collapsed");
+        })
+
+        hsel.addEventListener("mouseenter", () => {
+          hsel.enter = true;
+          hdrop.classList.remove("collapsed");
+        });
+
+        hsel.addEventListener("mouseleave", () => {
+          hsel.enter = false;
+
+          setTimeout(() => {
+            if (!hsel.enter) {
+              if (!hdrop.classList.contains("collapsed")) {
+                hdrop.classList.add("collapsed");
               }
-
-            }, 100);
-
-          });
-
-          if (!source.legend) {
-            readout.classList.add("collapsed");
-            indicator.classList.add("collapsed");
-            header.classList.remove("selected");
-          }
-
-          hkey.addEventListener("click", e => {
-            readout.classList.toggle("collapsed");
-            indicator.classList.toggle("collapsed");
-            header.classList.toggle("selected");
-
-            source.legend = !source.legend;
-
-            if (!readout.classList.contains("collapsed")) {
-              readout.scrollIntoView();
-              hkey.title = "Hide Legend"
-            } else {
-              hkey.title = "Show Legend"
             }
-          });
 
+          }, 100);
 
+        });
 
-          header.appendChild(indicator);
-          header.appendChild(hkey);
-          header.appendChild(hsel);
-          headers.appendChild(header);
+        if (!source.legend || !source.active) {
+          readout.classList.add("collapsed");
+          indicator.classList.add("collapsed");
+          header.classList.remove("selected");
+        }
 
-          if (source.active) {
+        hkey.addEventListener("click", e => {
 
-            readout.appendChild(content);
-            readouts.appendChild(readout);
-
-            self.buildLegend(s, content);
+          if (!source.active) {
+            return;
           }
+
+          readout.classList.toggle("collapsed");
+          indicator.classList.toggle("collapsed");
+          header.classList.toggle("selected");
+
+          source.legend = !source.legend;
+
+          if (!readout.classList.contains("collapsed")) {
+            readout.scrollIntoView();
+            hkey.title = "Hide Legend"
+          } else {
+            hkey.title = "Show Legend"
+          }
+        });
+
+        var hupimg = document.createElement("img");
+        hupimg.style = " transform: rotate(90deg) scale(0.8, 0.8); ";
+        hupimg.src = "img/left-arrow-icon.png";
+        hupimg.classList.add("mapbox-custom-ctrl");
+
+        var hup = document.createElement("div");
+        hup.title = "Move Layer Up";
+        hup.selected = !source.visible;
+        hup.classList.add("legend-header-visibility");
+        hup.appendChild(hupimg);
+        if (!source.visible) {
+          hup.classList.add("collapsed");
+        }
+        if (sources.indexOf(source.source) === 0) {
+          hupimg.classList.add("inactive");
+          hup.classList.add("inactive");
+        }
+        hup.addEventListener("click", e => {
+          self.moveSourceUp(source.source);
+        });
+
+        var hdownimg = document.createElement("img");
+        hdownimg.style = " transform: rotate(90deg) scale(0.8, 0.8); ";
+        hdownimg.src = "img/right-arrow-icon.png";
+        hdownimg.classList.add("mapbox-custom-ctrl");
+
+        var hdown = document.createElement("div");
+        hdown.title = "Move Layer Down";
+        hdown.selected = !source.visible;
+        hdown.classList.add("legend-header-visibility");
+        hdown.appendChild(hdownimg);
+        if (!source.visible) {
+          hdown.classList.add("collapsed");
+        }
+        if (sources.indexOf(source.source) === sources.length -1) {
+          hdownimg.classList.add("inactive");
+          hdown.classList.add("inactive");
+        }
+        hdown.addEventListener("click", e => {
+          self.moveSourceDown(source.source);
+        });
+
+        var hvisimg = document.createElement("img");
+        hvisimg.src = "img/view-icon.png";
+        hvisimg.style = "transform: scale(0.8, 0.8); ";
+        hvisimg.classList.add("mapbox-custom-ctrl");
+        if (!source.visible) {
+          hvisimg.classList.add("inactive");
+        }
+
+        var hvis = document.createElement("div");
+        hvis.title = source.visible ? "Hide Map Layer" : "Show Map Layer";
+        hvis.selected = !source.visible;
+        hvis.classList.add("legend-header-visibility");
+        hvis.appendChild(hvisimg);
+        hvis.addEventListener("click", e => {
+
+          if (hvis.selected) {
+            hvis.selected = false;
+            hvis.title = "Hide Map Layer";
+            hvisimg.classList.remove("inactive");
+            hup.classList.remove("collapsed");
+            hdown.classList.remove("collapsed");
+
+          } else {
+            hvis.selected = true;
+            hvis.title = "Show Map Layer";
+            if (!hvisimg.classList.contains("inactive")) {
+              hvisimg.classList.add("inactive");
+              hup.classList.add("collapsed");
+              hdown.classList.add("collapsed");
+            }
+          }
+
+          self.toggleLayers(source.source, !hvis.selected);
+
+        });
+
+        header.appendChild(indicator);
+        header.appendChild(hvis);
+
+        if (sources.length > 1) {
+          header.appendChild(hup);
+          header.appendChild(hdown);
+        }
+
+        header.appendChild(hkey);
+
+        if (props.length) {
+          header.appendChild(hsel);
+        }
+
+        headers.appendChild(header);
+
+        if (source.active) {
+
+          readout.appendChild(content);
+          readouts.appendChild(readout);
+
+          self.buildLegend(s, content);
         }
 
     });
@@ -3869,7 +4194,7 @@ function clean(object) {
 
   Object.keys(object).forEach(k => {
 
-    var _k =  k.replace(/ /g, '_').replace(/\n/, '_');
+    var _k =  k.replace(/ /g, '_').replace(/\n/, '_').replace(/[^A-Z0-9]/ig, "_")
 
     clean[_k] = object[k];
 

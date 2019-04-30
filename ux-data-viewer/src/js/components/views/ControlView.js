@@ -1,11 +1,6 @@
+export default class ControlView {
 
-export default class SSController {
-
-    constructor(options) {
-      this._options = options || {};
-    }
-
-    setMapController(controller) {
+    constructor(controller) {
       this._mapController = controller;
     }
 
@@ -49,7 +44,6 @@ export default class SSController {
         this._cameraButton = this.buildCameraButton();
         this._cameraLabel = this.buildLabel();
         this._saveButton = this.buildSaveCameraButton();
-        this._selectButton = this.buildSelectCameraButton();
         this._deleteButton = this.buildDeleteCameraButton();
         this._nextButton = this.buildNextCameraButton();
 
@@ -66,7 +60,6 @@ export default class SSController {
         this._iterDiv.appendChild(this._cameraLabel);
         this._iterDiv.appendChild(this._nextButton);
         this._iterDiv.appendChild(this._saveButton);
-        //this._iterDiv.appendChild(this._selectButton);
         this._iterDiv.appendChild(this._deleteButton);
 
         // add everything ---
@@ -85,13 +78,38 @@ export default class SSController {
         this._container.appendChild(this._exportButton);
 
         this.updateCameras();
+        this.updateLayers();
+        this.updateToggle();
 
         return this._container;
     }
 
+    fire(type) {
+      if (type == "toggle") {
+        this.updateToggle();
+      } else if (type == "camera") {
+        this.updateCameras();
+      } else if (type == "layers") {
+        this.updateLayers();
+      }
+    }
+
     onRemove() {
-        this._container.parentNode.removeChild(this._container);
-        this._map = undefined;
+      this._container.parentNode.removeChild(this._container);
+      this._map = undefined;
+    }
+
+
+    buildLabel(text) {
+
+      var label = document.createElement("div");
+      label.classList.add("mapbox-custom-label");
+
+      if (text) {
+        label.innerHTML = text;
+      }
+
+      return label;
     }
 
     updateCameras() {
@@ -162,18 +180,6 @@ export default class SSController {
 
     }
 
-    buildLabel(text) {
-
-      var label = document.createElement("div");
-      label.classList.add("mapbox-custom-label");
-
-      if (text) {
-        label.innerHTML = text;
-      }
-
-      return label;
-    }
-
     buildCameraButton() {
 
       var self = this;
@@ -190,8 +196,6 @@ export default class SSController {
       button.appendChild(img);
       button.selected = false;
       button.addEventListener("click", e => {
-
-        console.log("toggle");
 
         if (button.selected) {
           button.selected = false;
@@ -210,35 +214,13 @@ export default class SSController {
           self._iterDiv.classList.remove("collapsed");
 
           if (self._layersButton.selected) {
-            self._layersButton.click();
+            self._layersButton.click(); // only one menu open at a time ---
           }
         }
 
       });
 
       return button;
-    }
-
-    buildSelectCameraButton() {
-
-      var self = this;
-
-      var img = document.createElement("img");
-      img.src = "img/pointer-icon.png";
-      img.classList.add("mapbox-custom-ctrl");
-      //img.classList.add("inactive");
-
-      var button = document.createElement("button");
-      button.classList.add("mapboxgl-ctrl-icon");
-      button.type = "button";
-      button.title = "Select View";
-      button.appendChild(img);
-      button.addEventListener("click", e => {
-
-      });
-
-      return button;
-
     }
 
     buildDeleteCameraButton() {
@@ -248,7 +230,6 @@ export default class SSController {
       var img = document.createElement("img");
       img.src = "img/trash-mapbox-icon.svg";
       img.classList.add("mapbox-custom-ctrl");
-      //img.classList.add("inactive");
 
       var button = document.createElement("button");
       button.classList.add("mapboxgl-ctrl-icon");
@@ -322,27 +303,33 @@ export default class SSController {
       return button;
     }
 
-    buildExportSchemaButton() {
+    updateLayers() {
 
       var self = this;
 
-      var img = document.createElement("img");
-      img.src = "img/export-icon.png";
-      img.style = "transform: scale(0.8, 0.8); ";
-      img.classList.add("mapbox-custom-ctrl");
-      //img.classList.add("inactive");
+      if (self._mapController.isBoundaryVisible()) {
+        self._boundaryButton.firstChild.classList.remove("inactive");
+      } else {
+        if (!self._boundaryButton.firstChild.classList.contains("inactive")) {
+          self._boundaryButton.firstChild.classList.add("inactive");
+        }
+      }
 
-      var button = document.createElement("button");
-      button.classList.add("mapboxgl-ctrl-icon");
-      //button.classList.add("disabled");
-      button.type = "button";
-      button.title = "Export Scheme";
-      button.appendChild(img);
-      button.addEventListener("click", e => {
+      if (self._mapController.isMasked()) {
+        self._maskButton.firstChild.classList.remove("inactive");
+      } else {
+        if (!self._maskButton.firstChild.classList.contains("inactive")) {
+          self._maskButton.firstChild.classList.add("inactive");
+        }
+      }
 
-      });
-
-      return button;
+      if (self._mapController.areLabelsVisible()) {
+       self._labelsButton.firstChild.classList.remove("inactive");
+      } else {
+       if (!self._labelsButton.firstChild.classList.contains("inactive")) {
+         self._labelsButton.firstChild.classList.add("inactive");
+       }
+      }
     }
 
     buildLayersButton() {
@@ -362,8 +349,6 @@ export default class SSController {
       button.selected = false;
       button.addEventListener("click", e => {
 
-        console.log("toggle");
-
         if (button.selected) {
           button.selected = false;
 
@@ -381,7 +366,7 @@ export default class SSController {
           self._layerDiv.classList.remove("collapsed");
 
           if (self._cameraButton.selected) {
-            self._cameraButton.click();
+            self._cameraButton.click(); // only one menu open at a time ---
           }
         }
 
@@ -398,26 +383,13 @@ export default class SSController {
       img.src = "img/view-icon.png";
       img.style = "transform: scale(0.8, 0.8); ";
       img.classList.add("mapbox-custom-ctrl");
-      //img.classList.add("inactive");
 
       var button = document.createElement("button");
       button.classList.add("mapboxgl-ctrl-icon");
-      //button.classList.add("disabled");
       button.type = "button";
       button.title = "Boundaries";
-      button.selected = false;
       button.appendChild(img);
       button.addEventListener("click", e => {
-
-        if (button.selected) {
-          button.selected = false;
-          img.classList.remove("inactive");
-
-        } else {
-          button.selected = true;
-          img.classList.add("inactive");
-        }
-
         self._mapController.toggleBoundaryVisible(!self._mapController.isBoundaryVisible());
       });
 
@@ -432,26 +404,13 @@ export default class SSController {
       img.src = "img/view-icon.png";
       img.style = "transform: scale(0.8, 0.8); ";
       img.classList.add("mapbox-custom-ctrl");
-      //img.classList.add("inactive");
 
       var button = document.createElement("button");
       button.classList.add("mapboxgl-ctrl-icon");
-      //button.classList.add("disabled");
       button.type = "button";
       button.title = "Mask";
-      button.selected = false;
       button.appendChild(img);
       button.addEventListener("click", e => {
-
-        if (button.selected) {
-          button.selected = false;
-          img.classList.remove("inactive");
-
-        } else {
-          button.selected = true;
-          img.classList.add("inactive");
-        }
-
         self._mapController.toggleMask(!self._mapController.isMasked());
       });
 
@@ -471,116 +430,26 @@ export default class SSController {
       button.classList.add("mapboxgl-ctrl-icon");
       button.type = "button";
       button.title = "Labels";
-      button.selected = false;
       button.appendChild(img);
       button.addEventListener("click", e => {
-
-        console.log("labels");
-
-        var layers = self._map.getStyle().layers;
-
-        var ids = [];
-        for (var i = 0; i < layers.length; i++) {
-          if (layers[i].type === 'symbol') {
-            if (layers[i].id !== "symbols-hot") {
-              ids.push(layers[i].id);
-            }
-          }
-        }
-
-        if (button.selected) {
-          button.selected = false;
-          img.classList.remove("inactive");
-
-        } else {
-          button.selected = true;
-          img.classList.add("inactive");
-        }
-
-        ids.forEach(id => {
-          self._map.setLayoutProperty(id, 'visibility', button.selected ? 'none' : 'visible' );
-        });
-
-      })
+        self._mapController.toggleLabelsVisible(!self._mapController.areLabelsVisible());
+      });
 
       return button;
     }
 
-    buildSnapshotButton() {
+    updateToggle() {
 
       var self = this;
 
-      var snapshotImg = document.createElement("img");
-      snapshotImg.src = "img/camera-icon.png";
-      snapshotImg.classList.add("mapbox-custom-ctrl");
-
-      var snapshotButton = document.createElement("button");
-      snapshotButton.classList.add("mapboxgl-ctrl-icon");
-      snapshotButton.type = "button";
-      snapshotButton.title = "Snapshot Map";
-      snapshotButton.appendChild(snapshotImg);
-      snapshotButton.addEventListener("click", e => {
-
-        console.log("snapshot");
-
-        self._map.getCanvas().toBlob(function (blob) {
-
-          saveAs(blob, 'output.png');
-
-          console.log('saved as output.png');
-
-        });
-
-      });
-
-      return snapshotButton;
-    }
-
-    isExtruded() {
-      return this._toggleButton.selected;
-    }
-
-    pitchControl(flat) {
-
-      if (!this._mapController) {
-        return;
-      }
-
-      var self = this;
-
-      Object.keys(this._mapController.sources).forEach(key => {
-
-        var source = this._mapController.sources[key];
-        var propertyLayerId = source.layers.property;
-
-        if (!propertyLayerId) {
-          return;
+      if (!self._mapController.isExtruded()) {
+        self._toggleButton.title = "3D View";
+        if (!self._toggleButton.firstChild.classList.contains("inactive")) {
+          self._toggleButton.firstChild.classList.add("inactive");
         }
-
-        if (source.types.includes("Polygon") || source.types.includes("MultiPolygon")) {
-
-          if (flat) {
-
-            console.log("make flat");
-            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-height", 0);
-            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-base", 0);
-
-          } else {
-
-            console.log("make extruded");
-            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-height", ["get", source.height]);
-            self._map.setPaintProperty(propertyLayerId, "fill-extrusion-base", ["get", source.base]);
-          }
-
-        }
-      });
-    }
-
-    fire(type) {
-      if (type == "toggle") {
-        this._toggleButton.click();
-      } else if (type == "camera") {
-        this.updateCameras();
+      } else {
+        self._toggleButton.title = "Plan View";
+        self._toggleButton.firstChild.classList.remove("inactive");
       }
     }
 
@@ -591,46 +460,14 @@ export default class SSController {
       var img = document.createElement("img");
       img.src = "img/cube-icon.png";
       img.classList.add("mapbox-custom-ctrl");
-      img.classList.add("inactive");
 
       var button = document.createElement("button");
       button.classList.add("mapboxgl-ctrl-icon");
       button.type = "button";
       button.title = "3D View";
       button.appendChild(img);
-      button.selected = false;
       button.addEventListener("click", e => {
-
-        console.log("toggle");
-
-        if (button.selected) {
-          button.selected = false;
-          //img.src = "img/cube-icon.png";
-          img.classList.add("inactive");
-          button.title = "3D View";;
-
-          self._map.setPitch(0);
-          self._map.setBearing(0);
-          self._map.touchZoomRotate.disableRotation();
-          self._map.dragRotate.disable();
-
-        } else {
-          button.selected = true;
-          img.classList.remove("inactive");
-          button.title = "Plan View";
-
-          self._map.setPitch(30);
-
-          self._map.touchZoomRotate.enableRotation();
-          self._map.dragRotate.enable();
-        }
-
-        // if (e.isTrusted) {
-        //   self._mapController.toggleCamera("default");
-        // }
-
-        self.pitchControl(!button.selected);
-
+        self._mapController.toggleExtruded(!self._mapController.isExtruded());
       });
 
       return button;
@@ -640,20 +477,79 @@ export default class SSController {
 
       var self = this;
 
-      var helpImg = document.createElement("img");
-      helpImg.src = "img/help-icon.png";
-      helpImg.classList.add("mapbox-custom-ctrl");
+      var img = document.createElement("img");
+      img.src = "img/help-icon.png";
+      img.classList.add("mapbox-custom-ctrl");
 
-      var helpButton = document.createElement("button");
-      helpButton.classList.add("mapboxgl-ctrl-icon");
-      helpButton.type = "button";
-      helpButton.title = "App Info";
-      helpButton.appendChild(helpImg);
-      helpButton.addEventListener("click", e => {
-
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "App Info";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
         console.log("help");
       });
 
-      return helpButton;
+      return button;
+    }
+
+    buildSnapshotButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/camera-icon.png";
+      img.classList.add("mapbox-custom-ctrl");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Snapshot Map";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+        self._map.getCanvas().toBlob(function (blob) {
+          saveAs(blob, 'output.png');
+        });
+
+      });
+
+      return button;
+    }
+
+    buildExportSchemaButton() {
+
+      var self = this;
+
+      var img = document.createElement("img");
+      img.src = "img/export-icon.png";
+      img.style = "transform: scale(0.8, 0.8); ";
+      img.classList.add("mapbox-custom-ctrl");
+
+      var button = document.createElement("button");
+      button.classList.add("mapboxgl-ctrl-icon");
+      button.type = "button";
+      button.title = "Export Scheme";
+      button.appendChild(img);
+      button.addEventListener("click", e => {
+
+        var encode = function( s ) {
+          var out = [];
+          for ( var i = 0; i < s.length; i++ ) {
+            out[i] = s.charCodeAt(i);
+          }
+          return new Uint8Array( out );
+        }
+
+        var obj = self._mapController.buildSchema();
+        var str = JSON.stringify(obj);
+        var data = encode( str );
+        var blob = new Blob( [ data ], {
+          type: 'application/octet-stream'
+        });
+
+        saveAs(blob, 'schema.json');
+      });
+
+      return button;
     }
 }
