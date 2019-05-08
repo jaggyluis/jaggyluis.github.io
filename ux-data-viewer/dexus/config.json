@@ -1,0 +1,475 @@
+{
+  "title": "UX.View",
+  "type": "SSDataSchema",
+  "options": {
+    "draw": false,
+    "data": false,
+    "filter": true,
+    "download": false,
+    "labels": true,
+    "export": true,
+    "active": "buildings",
+    "camera": "camera_mc86ti",
+    "mask": false,
+    "boundary": true,
+    "extrude": false,
+    "popups": true
+  },
+  "cameras": [
+    {
+      "center": [
+        151.18384357689797,
+        -33.89688269698888
+      ],
+      "zoom": 12.737737867830301,
+      "bearing": 0,
+      "pitch": 0,
+      "plan": true,
+      "id": "camera_mc86ti"
+    },
+    {
+      "center": [
+        151.1929707892716,
+        -33.89655789462096
+      ],
+      "zoom": 13.64304016308614,
+      "bearing": -28.00000000000011,
+      "pitch": 34.5,
+      "plan": false,
+      "id": "camera_kea5fj"
+    }
+  ],
+  "schemas": [
+    {
+      "id": "site",
+      "url": "data/site.geojson",
+      "options": {
+        "visible": true,
+        "include": true,
+        "interactive": false,
+        "legend": true,
+        "index": 0,
+        "properties": {
+          "filtered": [
+            "_id",
+            "id",
+            "lat",
+            "lon"
+          ],
+          "hidden": [
+            "_id",
+            "id",
+            "lat",
+            "lon"
+          ],
+          "selected": []
+        },
+        "features": {
+          "selected": [
+            0
+          ]
+        },
+        "boundary": {
+          "xor": false,
+          "filtered": [
+            "draw"
+          ]
+        },
+        "style": [],
+        "clean": false,
+        "defaults": {
+          "string": "invalid data",
+          "number": -1,
+          "date": null,
+          "boolean": false
+        }
+      }
+    },
+    {
+      "id": "boundary",
+      "url": "data/boundary.geojson",
+      "options": {
+        "visible": false,
+        "include": false,
+        "interactive": false,
+        "legend": true,
+        "index": 1,
+        "properties": {
+          "filtered": [
+            "_id",
+            "id",
+            "lat",
+            "lon"
+          ],
+          "hidden": [
+            "_id",
+            "id",
+            "lat",
+            "lon"
+          ],
+          "selected": []
+        },
+        "features": {
+          "selected": [
+            0
+          ]
+        },
+        "boundary": {
+          "xor": false,
+          "filtered": [
+            "draw"
+          ]
+        },
+        "style": [],
+        "clean": false,
+        "defaults": {
+          "string": "invalid data",
+          "number": -1,
+          "date": null,
+          "boolean": false
+        }
+      }
+    },
+    {
+      "id": "background",
+      "url": "data/dexus.geojson",
+      "options": {
+        "visible": false,
+        "include": false,
+        "interactive": false,
+        "legend": true,
+        "index": 2,
+        "properties": {
+          "filtered": [
+            "Address",
+            "Area_Creative",
+            "Area_FnB",
+            "Area_HigherEd",
+            "Area_ICT",
+            "Area_LifeScience",
+            "Area_OtherOffice",
+            "BUILDINGKEY",
+            "Empl_Creative",
+            "Empl_HigherEd",
+            "Empl_ICT",
+            "Empl_LifeScience",
+            "Empl_OtherOffice",
+            "FLOORKEY",
+            "FloorHeight",
+            "FloorRL",
+            "GROUNDFLOORUSE",
+            "MAJORUSE",
+            "Percent_Creative",
+            "Percent_FnB",
+            "Percent_HigherEd",
+            "Percent_ICT",
+            "Percent_LifeScience",
+            "Percent_OtherOffice",
+            "RoofRL",
+            "Shape_Area",
+            "Total_Area",
+            "Total_Area3",
+            "Total_Area_Office",
+            "Total_Empl",
+            "_id",
+            "height",
+            "lat",
+            "lon",
+            "satisfied_all",
+            "satisfied_area",
+            "satisfied_largetower",
+            "satisfied_podium",
+            "satisfied_tower",
+            "total_area",
+            "typology"
+          ],
+          "hidden": [
+            "Address",
+            "Area_Creative",
+            "Area_FnB",
+            "Area_HigherEd",
+            "Area_ICT",
+            "Area_LifeScience",
+            "Area_OtherOffice",
+            "BUILDINGKEY",
+            "Empl_Creative",
+            "Empl_HigherEd",
+            "Empl_ICT",
+            "Empl_LifeScience",
+            "Empl_OtherOffice",
+            "FLOORKEY",
+            "FloorHeight",
+            "FloorRL",
+            "GROUNDFLOORUSE",
+            "MAJORUSE",
+            "Percent_Creative",
+            "Percent_FnB",
+            "Percent_HigherEd",
+            "Percent_ICT",
+            "Percent_LifeScience",
+            "Percent_OtherOffice",
+            "RoofRL",
+            "Shape_Area",
+            "Total_Area",
+            "Total_Area3",
+            "Total_Area_Office",
+            "Total_Empl",
+            "_id",
+            "height",
+            "lat",
+            "lon",
+            "satisfied_all",
+            "satisfied_area",
+            "satisfied_largetower",
+            "satisfied_podium",
+            "satisfied_tower",
+            "total_area",
+            "typology"
+          ],
+          "selected": [],
+          "base": "FloorRL",
+          "height": "RoofRL"
+        },
+        "features": {
+          "selected": []
+        },
+        "boundary": {
+          "xor": false,
+          "filtered": [
+            "draw"
+          ]
+        },
+        "style": [],
+        "clean": false,
+        "defaults": {
+          "string": "invalid data",
+          "number": -1,
+          "date": null,
+          "boolean": false
+        }
+      }
+    },
+    {
+      "id": "buildings",
+      "url": "data/dexus.geojson",
+      "options": {
+        "visible": true,
+        "include": true,
+        "interactive": true,
+        "legend": true,
+        "index": 3,
+        "properties": {
+          "filtered": [
+            "Address",
+            "Area_Creative",
+            "Area_FnB",
+            "Area_HigherEd",
+            "Area_ICT",
+            "Area_LifeScience",
+            "Area_OtherOffice",
+            "BUILDINGKEY",
+            "Empl_Creative",
+            "Empl_HigherEd",
+            "Empl_ICT",
+            "Empl_LifeScience",
+            "Empl_OtherOffice",
+            "FLOORKEY",
+            "FloorHeight",
+            "FloorRL",
+            "GROUNDFLOORUSE",
+            "MAJORUSE",
+            "Percent_Creative",
+            "Percent_FnB",
+            "Percent_HigherEd",
+            "Percent_ICT",
+            "Percent_LifeScience",
+            "Percent_OtherOffice",
+            "RoofRL",
+            "Shape_Area",
+            "Total_Area",
+            "Total_Area3",
+            "Total_Area_Office",
+            "Total_Empl",
+            "_id",
+            "height",
+            "lat",
+            "lon",
+            "satisfied_all",
+            "satisfied_area",
+            "satisfied_largetower",
+            "satisfied_podium",
+            "satisfied_tower",
+            "total_area",
+            "typology"
+          ],
+          "hidden": [
+            "Address",
+            "Area_Creative",
+            "Area_FnB",
+            "Area_HigherEd",
+            "Area_ICT",
+            "Area_LifeScience",
+            "Area_OtherOffice",
+            "BUILDINGKEY",
+            "Empl_Creative",
+            "Empl_HigherEd",
+            "Empl_ICT",
+            "Empl_LifeScience",
+            "Empl_OtherOffice",
+            "FLOORKEY",
+            "FloorHeight",
+            "FloorRL",
+            "GROUNDFLOORUSE",
+            "Percent_Creative",
+            "Percent_FnB",
+            "Percent_HigherEd",
+            "Percent_ICT",
+            "Percent_LifeScience",
+            "Percent_OtherOffice",
+            "RoofRL",
+            "Total_Area",
+            "Total_Area3",
+            "Total_Area_Office",
+            "Total_Empl",
+            "_id",
+            "height",
+            "lat",
+            "lon",
+            "satisfied_all",
+            "satisfied_area",
+            "satisfied_largetower",
+            "satisfied_podium",
+            "satisfied_tower",
+            "total_area",
+            "typology"
+          ],
+          "selected": [
+            "MAJORUSE",
+            "Shape_Area"
+          ],
+          "base": "FloorRL",
+          "height": "RoofRL",
+          "active": "MAJORUSE"
+        },
+        "features": {
+          "selected": []
+        },
+        "boundary": {
+          "xor": false,
+          "filtered": [
+            "draw"
+          ]
+        },
+        "style": [
+          {
+            "property": "MAJORUSE",
+            "label": "program use",
+            "selected": [
+              "CM",
+              "CP",
+              "ET",
+              "MD",
+              "PK",
+              "RS",
+              "RT",
+              "SA",
+              "TL"
+            ],
+            "filtered": [
+              "CM",
+              "CP",
+              "ET",
+              "IN",
+              "MD",
+              "NA",
+              "PK",
+              "PS",
+              "RS",
+              "RT",
+              "SA",
+              "TL",
+              "TP",
+              "UR",
+              "UT",
+              "XX",
+              "invalid data"
+            ],
+            "hidden": [
+              "IN",
+              "NA",
+              "PS",
+              "TP",
+              "UR",
+              "UT",
+              "XX",
+              "invalid data"
+            ]
+          },
+          {
+            "property": "Shape_Area",
+            "color": "RdPu",
+            "label": "floorplate area",
+            "unit": "m2"
+          }
+        ],
+        "clean": false,
+        "defaults": {
+          "string": "invalid data",
+          "number": -1,
+          "date": null,
+          "boolean": false
+        }
+      }
+    },
+    {
+      "id": "context",
+      "url": "data/buildings.geojson",
+      "options": {
+        "visible": true,
+        "include": true,
+        "interactive": false,
+        "legend": true,
+        "index": 4,
+        "properties": {
+          "filtered": [
+            "_id",
+            "height",
+            "lat",
+            "lon",
+            "tot_p",
+            "zone_aut_n"
+          ],
+          "hidden": [
+            "_id",
+            "height",
+            "lat",
+            "lon",
+            "tot_p",
+            "zone_aut_n"
+          ],
+          "selected": [],
+          "base": "__default_null__",
+          "height": "height"
+        },
+        "features": {
+          "selected": []
+        },
+        "boundary": {
+          "xor": true,
+          "filtered": [
+            "draw",
+            "boundary"
+          ]
+        },
+        "style": [],
+        "clean": false,
+        "defaults": {
+          "string": "invalid data",
+          "number": -1,
+          "date": null,
+          "boolean": false
+        }
+      }
+    }
+  ]
+}
